@@ -17,6 +17,8 @@ public interface VectorCompressor {
 
     Pair<int[], double[]> decompressSparse();
 
+    void timesBy(double x);
+
     double size();
 
     int memoryBytes();

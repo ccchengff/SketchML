@@ -252,6 +252,14 @@ public class SparseVectorCompressor implements VectorCompressor, Serializable {
     }
 
     @Override
+    public void timesBy(double x) {
+        if (quantValues != null) {
+            for (int i = 0; i < quantValues.length; i++)
+                quantValues[i] *= x;
+        }
+    }
+
+    @Override
     public double size() {
         return size;
     }
