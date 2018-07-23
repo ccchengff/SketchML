@@ -3,7 +3,7 @@ package org.dma.sketchml.ml.gradient
 import org.apache.spark.ml.linalg
 import org.apache.spark.ml.linalg.{DenseVector, SparseVector}
 import org.dma.sketchml.ml.gradient.Kind.Kind
-import org.dma.sketchml.ml.lib4s.Maths
+import org.dma.sketchml.ml.util.Maths
 
 class DenseDoubleGradient(d: Int, val values: Array[Double]) extends Gradient(d) {
   def this(d: Int) = this(d, new Array[Double](d))

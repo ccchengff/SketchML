@@ -3,7 +3,7 @@ package org.dma.sketchml.ml.objective
 import org.apache.spark.ml.linalg.DenseVector
 import org.dma.sketchml.ml.conf.MLConf
 import org.dma.sketchml.ml.gradient.{DenseDoubleGradient, Gradient, SparseDoubleGradient, SparseSortedDoubleGradient}
-import org.dma.sketchml.ml.lib4s.Maths
+import org.dma.sketchml.ml.util.Maths
 import org.slf4j.{Logger, LoggerFactory}
 
 object Adam {

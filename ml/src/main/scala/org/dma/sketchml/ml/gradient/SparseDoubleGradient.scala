@@ -4,7 +4,7 @@ import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap
 import org.apache.spark.ml.linalg
 import org.apache.spark.ml.linalg.{DenseVector, SparseVector}
 import org.dma.sketchml.ml.gradient.Kind.Kind
-import org.dma.sketchml.ml.lib4s.Maths
+import org.dma.sketchml.ml.util.Maths
 import org.dma.sketchml.sketch.util.Sort
 
 class SparseDoubleGradient(d: Int, val hashmap: Int2DoubleOpenHashMap) extends Gradient(d) {

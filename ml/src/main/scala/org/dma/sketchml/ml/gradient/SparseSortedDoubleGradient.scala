@@ -2,7 +2,7 @@ package org.dma.sketchml.ml.gradient
 
 import org.apache.spark.ml.linalg
 import org.dma.sketchml.ml.gradient.Kind.Kind
-import org.dma.sketchml.ml.lib4s.Maths
+import org.dma.sketchml.ml.util.Maths
 
 class SparseSortedDoubleGradient(d: Int, val indices: Array[Int],
                                  val values: Array[Double]) extends Gradient(d) {

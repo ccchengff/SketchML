@@ -1,4 +1,4 @@
-package org.dma.sketchml.ml.lib4s
+package org.dma.sketchml.ml.util
 
 import org.apache.spark.ml.linalg.{DenseVector, SparseVector, Vector}
 

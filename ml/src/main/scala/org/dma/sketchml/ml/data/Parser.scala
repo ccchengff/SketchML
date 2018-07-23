@@ -3,7 +3,7 @@ package org.dma.sketchml.ml.data
 import org.apache.spark.SparkContext
 import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.rdd.RDD
-import org.dma.sketchml.ml.lib4s.Maths
+import org.dma.sketchml.ml.util.Maths
 
 object Parser {
   def loadData(input: String, format: String, maxDim: Int, numPartition: Int,
