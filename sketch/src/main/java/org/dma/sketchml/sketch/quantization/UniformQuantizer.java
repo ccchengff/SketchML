@@ -1,6 +1,6 @@
-package org.dma.sketchml.quantization;
+package org.dma.sketchml.sketch.quantization;
 
-import org.dma.sketchml.base.Quantizer;
+import org.dma.sketchml.sketch.base.Quantizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,9 +29,10 @@ public class UniformQuantizer extends Quantizer {
         }
         // 1. uniformly split the range of values
         double step = (max - min) / binNum;
-        splits = new double[binNum];
-        splits[0] = min;
-        for (int i = 0; i < binNum; i++) {
+        int splitNum = binNum - 1;
+        splits = new double[splitNum];
+        splits[0] = min + step;
+        for (int i = 1; i < splitNum; i++) {
             splits[i] = splits[i - 1] + step;
         }
         // 3. find the zero index
@@ -54,9 +55,10 @@ public class UniformQuantizer extends Quantizer {
         }
         // 1. uniformly split the range of values
         double step = (max - min) / binNum;
-        splits = new double[binNum];
-        splits[0] = min;
-        for (int i = 0; i < binNum; i++) {
+        int splitNum = binNum - 1;
+        splits = new double[splitNum];
+        splits[0] = min + step;
+        for (int i = 1; i < splitNum; i++) {
             splits[i] = splits[i - 1] + step;
         }
         // 3. find the zero index

@@ -1,4 +1,6 @@
-package org.dma.sketchml.sketch.quantile;
+package org.dma.sketchml.sketch.sketch.quantile;
+
+import org.dma.sketchml.sketch.util.Maths;
 
 import java.util.Arrays;
 import java.util.Random;
@@ -11,17 +13,8 @@ public class SketchUtils {
             throw new QuantileSketchException("Invalid value of k: k should be positive");
         else if (k >= 65535)
             throw new QuantileSketchException("Invalid value of k: k should not be larger than 65536");
-        else if (!isPowerOf2(k))
+        else if (!Maths.isPowerOf2(k))
             throw new QuantileSketchException("Invalid value of k: k should be power of 2");
-    }
-
-
-    protected static boolean isPowerOf2(int k) {
-        for (int i = 1; i < 65536; i <<= 1) {
-            if (k == i)
-                return true;
-        }
-        return false;
     }
 
     protected static int needBufferCapacity(int k, long estimateN) {
@@ -45,7 +38,7 @@ public class SketchUtils {
     }
 
     protected static void checkEvenPartiotion(int evenPartition) {
-        if (evenPartition <= 0)
+        if (evenPartition <= 1)
             throw new QuantileSketchException("Invalid partition number: " + evenPartition);
     }
 

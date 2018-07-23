@@ -1,6 +1,6 @@
-package org.dma.sketchml.sketch.quantile;
+package org.dma.sketchml.sketch.sketch.quantile;
 
-import org.dma.sketchml.base.QuantileSketch;
+import org.dma.sketchml.sketch.base.QuantileSketch;
 
 import java.util.Arrays;
 
@@ -295,18 +295,16 @@ public class HeapQuantileSketch extends QuantileSketch {
         if (samplesArr == null || weightsArr == null)
             makeSummary();
 
-        double[] res = new double[evenPartition];
+        double[] splits = new double[evenPartition - 1];
         if (samplesArr.length == 0) {
-            Arrays.fill(res, Double.NaN);
-            return res;
+            Arrays.fill(splits, Double.NaN);
+            return splits;
         }
 
-        res[0] = minValue;
         int index = 0;
-        double curFrac = 0.0f;
+        double curFrac = 1.0f / evenPartition;
         double step = 1.0f / evenPartition;
-        for (int i = 1; i < evenPartition; i++) {
-            curFrac += step;
+        for (int i = 0; i + 1 < evenPartition; i++) {
             long rank = (long)(n * curFrac);
             rank = Math.min(rank, n - 1);
             int left = index, right = weightsArr.length - 1;
@@ -317,10 +315,11 @@ public class HeapQuantileSketch extends QuantileSketch {
                 else
                     right = mid;
             }
-            res[i] = samplesArr[left];
+            splits[i] = samplesArr[left];
             index = left;
+            curFrac += step;
         }
-        return res;
+        return splits;
     }
 
     private double getQuantileFromArr(double fraction) {

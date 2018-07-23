@@ -1,12 +1,11 @@
-package org.dma.sketchml.quantization;
+package org.dma.sketchml.sketch.quantization;
 
-import org.dma.sketchml.base.Quantizer;
-import org.dma.sketchml.common.Constants;
-import org.dma.sketchml.sketch.quantile.HeapQuantileSketch;
+import org.dma.sketchml.sketch.base.Quantizer;
+import org.dma.sketchml.sketch.common.Constants;
+import org.dma.sketchml.sketch.sketch.quantile.HeapQuantileSketch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -35,9 +34,7 @@ public class QuantileQuantizer extends Quantizer {
         min = qSketch.getMinValue();
         max = qSketch.getMaxValue();
         // 2. query quantiles, set them as bin edges
-        double[] fractions = new double[binNum];
-        Arrays.setAll(fractions, i -> i * 1.0 / binNum);
-        splits = qSketch.getQuantiles(fractions);
+        splits = qSketch.getQuantiles(binNum);
         // 3. find the zero index
         findZeroIdx();
         // 4. find index of each value
@@ -79,9 +76,7 @@ public class QuantileQuantizer extends Quantizer {
         min = qSketch.getMinValue();
         max = qSketch.getMaxValue();
         // 2. query quantiles, set them as bin edges
-        double[] fractions = new double[binNum];
-        Arrays.setAll(fractions, i -> i * 1.0 / binNum);
-        splits = qSketch.getQuantiles(fractions);
+        splits = qSketch.getQuantiles(binNum);
         // 3. find the zero index
         findZeroIdx();
         // 4. find index of each value

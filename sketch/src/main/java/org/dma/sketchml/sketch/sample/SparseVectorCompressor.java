@@ -1,15 +1,18 @@
-package org.dma.sketchml.compressor;
+package org.dma.sketchml.sketch.sample;
 
 
-import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
-import it.unimi.dsi.fastutil.shorts.ShortArrayList;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
-import org.dma.sketchml.Util.Sort;
-import org.dma.sketchml.base.*;
-import org.dma.sketchml.common.Constants;
-import org.dma.sketchml.sketch.frequency.*;
+import org.dma.sketchml.sketch.util.Maths;
+import org.dma.sketchml.sketch.util.Sort;
+import org.dma.sketchml.sketch.base.BinaryEncoder;
+import org.dma.sketchml.sketch.base.Quantizer;
+import org.dma.sketchml.sketch.base.SketchMLException;
+import org.dma.sketchml.sketch.base.VectorCompressor;
+import org.dma.sketchml.sketch.binary.DeltaBinaryEncoder;
+import org.dma.sketchml.sketch.common.Constants;
+import org.dma.sketchml.sketch.sketch.frequency.MinMaxSketch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,33 +76,24 @@ public class SparseVectorCompressor implements VectorCompressor, Serializable {
         minMaxSketches = new MinMaxSketch[mmSketchGroupNum];
         encoders = new BinaryEncoder[mmSketchGroupNum];
         // 3 & 4. encode bins and keys
-        if (quantBinNum <= 256) {
-            Pair<IntArrayList[], ByteArrayList[]> partKBLists = CompressUtil.partition(
-                    keys, quantizer.getByteBins(), groupEdges);
-            byte zeroValue = (byte) (quantizer.getZeroIdx() + Byte.MIN_VALUE);
-            for (int i = 0; i < mmSketchGroupNum; i++) {
-                minMaxSketches[i] = CompressUtil.encodeByteBins(partKBLists.getLeft()[i], partKBLists.getRight()[i],
-                        zeroValue, mmSketchRowNum, mmSketchColRatio);
-                encoders[i] = CompressUtil.encodeKeys(partKBLists.getLeft()[i]);
+        Pair<IntArrayList[], IntArrayList[]> partKBLists = CompressUtil.partition(
+                keys, quantizer.getBins(), groupEdges);
+        int zeroValue = quantizer.getZeroIdx();
+        for (int i = 0; i < mmSketchGroupNum; i++) {
+            IntArrayList keyList = partKBLists.getLeft()[i];
+            IntArrayList binList = partKBLists.getRight()[i];
+            // 3. encode bins
+            int groupSize = keyList.size();
+            int mmSketchColNum = (int) Math.ceil(groupSize * mmSketchColRatio);
+            int partNumBin = groupEdges[i] - i == 0 ? 0 : groupEdges[i - 1];
+            int bitsPerCell = Maths.log2nlz(partNumBin);
+            minMaxSketches[i] = new MinMaxSketch(mmSketchRowNum, mmSketchColNum, bitsPerCell, zeroValue);
+            for (int j = 0; j < groupSize; j++) {
+                minMaxSketches[i].insert(keyList.getInt(j), binList.getInt(j));
             }
-        } else if (quantBinNum <= 65536) {
-            Pair<IntArrayList[], ShortArrayList[]> partKBLists = CompressUtil.partition(
-                    keys, quantizer.getShortBins(), groupEdges);
-            short zeroValue = (short) (quantizer.getZeroIdx() + Short.MIN_VALUE);
-            for (int i = 0; i < mmSketchGroupNum; i++) {
-                minMaxSketches[i] = CompressUtil.encodeShortBins(partKBLists.getLeft()[i], partKBLists.getRight()[i],
-                        zeroValue, mmSketchRowNum, mmSketchColRatio);
-                encoders[i] = CompressUtil.encodeKeys(partKBLists.getLeft()[i]);
-            }
-        } else {
-            Pair<IntArrayList[], IntArrayList[]> partKBLists = CompressUtil.partition(
-                    keys, quantizer.getIntBins(), groupEdges);
-            int zeroValue = quantizer.getZeroIdx() + Integer.MIN_VALUE;
-            for (int i = 0; i < mmSketchGroupNum; i++) {
-                minMaxSketches[i] = CompressUtil.encodeIntBins(partKBLists.getLeft()[i], partKBLists.getRight()[i],
-                        zeroValue, mmSketchRowNum, mmSketchColRatio);
-                encoders[i] = CompressUtil.encodeKeys(partKBLists.getLeft()[i]);
-            }
+            // 4. encode keys
+            encoders[i] = new DeltaBinaryEncoder();
+            encoders[i].encode(keyList.toIntArray(null));
         }
         LOG.debug(String.format("Sparse vector compression cost %d ms, %d key-value " +
                 "pairs in total", System.currentTimeMillis() - startTime, size));
@@ -134,57 +128,29 @@ public class SparseVectorCompressor implements VectorCompressor, Serializable {
         // 3 & 4. encode bins and keys
         ExecutorService threadPool = Constants.Parallel.getThreadPool();
         Future<Void>[] futures = new Future[mmSketchGroupNum];
-        if (quantBinNum <= 256) {
-            Pair<IntArrayList[], ByteArrayList[]> partKBLists = CompressUtil.partition(
-                    keys, quantizer.getByteBins(), groupEdges);
-            byte zeroValue = (byte) (quantizer.getZeroIdx() + Byte.MIN_VALUE);
-            for (int i = 0; i < mmSketchGroupNum; i++) {
-                int groupIdx = i;
-                futures[i] = threadPool.submit(new Callable<Void>() {
-                    @Override
-                    public Void call() throws Exception {
-                        minMaxSketches[groupIdx] = CompressUtil.encodeByteBins(
-                                partKBLists.getLeft()[groupIdx], partKBLists.getRight()[groupIdx],
-                                zeroValue, mmSketchRowNum, mmSketchColRatio);
-                        encoders[groupIdx] = CompressUtil.encodeKeys(partKBLists.getLeft()[groupIdx]);
-                        return null;
+        Pair<IntArrayList[], IntArrayList[]> partKBLists = CompressUtil.partition(
+                keys, quantizer.getBins(), groupEdges);
+        int zeroValue = quantizer.getZeroIdx();
+        for (int i = 0; i < mmSketchGroupNum; i++) {
+            int groupIdx = i;
+            futures[i] = threadPool.submit(new Callable<Void>() {
+                @Override
+                public Void call() throws Exception {
+                    IntArrayList keyList = partKBLists.getLeft()[groupIdx];
+                    IntArrayList binList = partKBLists.getRight()[groupIdx];
+                    // 3. encode bins
+                    int groupSize = keyList.size();
+                    int mmSketchColNum = (int) Math.ceil(groupSize * mmSketchColRatio);
+                    minMaxSketches[groupIdx] = new MinMaxSketch(mmSketchRowNum, mmSketchColNum, zeroValue);
+                    for (int j = 0; j < groupSize; j++) {
+                        minMaxSketches[groupIdx].insert(keyList.getInt(j), binList.getInt(j));
                     }
-                });
-            }
-        } else if (quantBinNum <= 65536) {
-            Pair<IntArrayList[], ShortArrayList[]> partKBLists = CompressUtil.partition(
-                    keys, quantizer.getShortBins(), groupEdges);
-            short zeroValue = (short) (quantizer.getZeroIdx() + Short.MIN_VALUE);
-            for (int i = 0; i < mmSketchGroupNum; i++) {
-                int groupIdx = i;
-                futures[i] = threadPool.submit(new Callable<Void>() {
-                    @Override
-                    public Void call() throws Exception {
-                        minMaxSketches[groupIdx] = CompressUtil.encodeShortBins(
-                                partKBLists.getLeft()[groupIdx], partKBLists.getRight()[groupIdx],
-                                zeroValue, mmSketchRowNum, mmSketchColRatio);
-                        encoders[groupIdx] = CompressUtil.encodeKeys(partKBLists.getLeft()[groupIdx]);
-                        return null;
-                    }
-                });
-            }
-        } else {
-            Pair<IntArrayList[], IntArrayList[]> partKBLists = CompressUtil.partition(
-                    keys, quantizer.getIntBins(), groupEdges);
-            int zeroValue = quantizer.getZeroIdx() + Integer.MIN_VALUE;
-            for (int i = 0; i < mmSketchGroupNum; i++) {
-                int groupIdx = i;
-                futures[i] = threadPool.submit(new Callable<Void>() {
-                    @Override
-                    public Void call() throws Exception {
-                        minMaxSketches[groupIdx] = CompressUtil.encodeIntBins(
-                                partKBLists.getLeft()[groupIdx], partKBLists.getRight()[groupIdx],
-                                zeroValue, mmSketchRowNum, mmSketchColRatio);
-                        encoders[groupIdx] = CompressUtil.encodeKeys(partKBLists.getLeft()[groupIdx]);
-                        return null;
-                    }
-                });
-            }
+                    // 4. encode keys
+                    encoders[groupIdx] = new DeltaBinaryEncoder();
+                    encoders[groupIdx].encode(keyList.toIntArray(null));
+                    return null;
+                }
+            });
         }
         for (Future<Void> future : futures) {
             future.get();
@@ -216,30 +182,12 @@ public class SparseVectorCompressor implements VectorCompressor, Serializable {
         int cnt = 0;
         for (int i = 0; i < mmSketchGroupNum; i++) {
             int[] partKeys = encoders[i].decode();
-            if (quantBinNum <= 256) {
-                ByteMinMaxSketch minMaxSketch = (ByteMinMaxSketch) minMaxSketches[i];
-                for (int key : partKeys) {
-                    int binIdx = ((int) minMaxSketch.qurey(key)) - Byte.MIN_VALUE;
-                    keys[cnt] = key;
-                    values[cnt] = quantValues[binIdx];
-                    cnt++;
-                }
-            } else if (quantBinNum <= 65536) {
-                ShortMinMaxSketch minMaxSketch = (ShortMinMaxSketch) minMaxSketches[i];
-                for (int key : partKeys) {
-                    int binIdx = ((int) minMaxSketch.qurey(key)) - Short.MIN_VALUE;
-                    keys[cnt] = key;
-                    values[cnt] = quantValues[binIdx];
-                    cnt++;
-                }
-            } else {
-                IntMinMaxSketch minMaxSketch = (IntMinMaxSketch) minMaxSketches[i];
-                for (int key : partKeys) {
-                    int binIdx = minMaxSketch.qurey(key) - Integer.MIN_VALUE;
-                    keys[cnt] = key;
-                    values[cnt] = quantValues[binIdx];
-                    cnt++;
-                }
+            MinMaxSketch mmSketch = minMaxSketches[i];
+            for (int key : partKeys) {
+                int binIdx = mmSketch.query(key);
+                keys[cnt] = key;
+                values[cnt] = quantValues[binIdx];
+                cnt++;
             }
         }
         return new ImmutablePair<>(keys, values);
