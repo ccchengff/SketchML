@@ -1,11 +1,28 @@
 package org.dma.sketchml.ml.gradient
 
-import org.apache.spark.ml.linalg
 import org.dma.sketchml.ml.gradient.Kind.Kind
 import org.dma.sketchml.ml.util.Maths
+import org.dma.sketchml.sketch.base.SketchMLException
 
-class SparseSortedDoubleGradient(d: Int, val indices: Array[Int],
-                                 val values: Array[Double]) extends Gradient(d) {
+object SparseFloatGradient {
+  def apply(grad: Gradient): SparseFloatGradient = {
+    val (indices, values) = grad.kind match {
+      case Kind.DenseDouble => {
+        val dense = grad.asInstanceOf[DenseDoubleGradient]
+        ((0 until dense.dim).toArray, dense.values)
+      }
+      case Kind.SparseDouble => {
+        val sparse = grad.asInstanceOf[SparseDoubleGradient]
+        (sparse.indices, sparse.values)
+      }
+      case _ => throw new SketchMLException(s"Cannot create ${Kind.SparseFloat} from ${grad.kind}")
+    }
+    new SparseFloatGradient(grad.dim, indices, values.map(_.toFloat))
+  }
+}
+
+class SparseFloatGradient(d: Int, val indices: Array[Int],
+                          val values: Array[Float]) extends Gradient(d) {
   {
     require(indices.length == values.length,
       s"Sizes of indices and values not match: ${indices.length} & ${values.length}")
@@ -15,14 +32,10 @@ class SparseSortedDoubleGradient(d: Int, val indices: Array[Int],
     require(indices.last < dim, s"Index ${indices.last} out of bounds for gradient of dimension $dim")
   }
 
-  //override def plusBy(sparseSorted: SparseSortedDoubleGradient): Gradient = {
-  //  val kv = Maths.add(this.indices, this.values, sparseSorted.indices, sparseSorted.values)
-  //  new SparseSortedDoubleGradient(dim, kv._1, kv._2)
-  //}
-
   override def timesBy(x: Double): Unit = {
+    val x_ = x.toFloat
     for (i <- values.indices)
-      values(i) *= x
+      values(i) *= x_
   }
 
   override def countNNZ: Int = {
@@ -42,14 +55,12 @@ class SparseSortedDoubleGradient(d: Int, val indices: Array[Int],
   }
 
   override def toSparse: SparseDoubleGradient =
-    new SparseDoubleGradient(dim, indices, values)
-
-  override def toSparseSorted: SparseSortedDoubleGradient = this
+    new SparseDoubleGradient(dim, indices, values.map(_.toDouble))
 
   override def toAuto: Gradient = {
     val nnz = countNNZ
-    if (nnz > dim * 2 / 3) toDense else toSparseSorted
+    if (nnz > dim * 2 / 3) toDense else toSparse
   }
 
-  override def kind: Kind = Kind.SparseSortedDouble
+  override def kind: Kind = Kind.SparseFloat
 }

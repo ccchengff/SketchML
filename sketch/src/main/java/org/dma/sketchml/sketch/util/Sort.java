@@ -303,4 +303,40 @@ public class Sort {
             }
         }
     }
+
+    public static void merge(int[][] as, int[][] ys, int[] a, int[] y) {
+        int[] ks = new int[as.length];
+        int cur = 0;
+        while (cur < a.length) {
+            int argmin = -1;
+            int min = Integer.MAX_VALUE;
+            for (int i = 0; i < ks.length; i++) {
+                if (ks[i] < as[i].length && as[i][ks[i]] < min) {
+                    argmin = i;
+                    min = as[i][ks[i]];
+                }
+            }
+            a[cur] = as[argmin][ks[argmin]];
+            y[cur] = ys[argmin][ks[argmin]];
+            ks[argmin]++;
+            cur++;
+        }
+    }
+
+    public static void merge(int[][] as, double[][] ys, int[] a, double[] y) {
+        int[] ks = new int[as.length];
+        int cur = 0;
+        while (cur < a.length) {
+            int argmin = -1;
+            int min = Integer.MAX_VALUE;
+            for (int i = 0; i < ks.length; i++) {
+                if (ks[i] < as[i].length && as[i][ks[i]] < min)
+                    argmin = i;
+            }
+            a[cur] = as[argmin][ks[argmin]];
+            y[cur] = ys[argmin][ks[argmin]];
+            ks[argmin]++;
+            cur++;
+        }
+    }
 }

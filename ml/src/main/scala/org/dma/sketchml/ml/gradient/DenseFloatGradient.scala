@@ -3,13 +3,36 @@ package org.dma.sketchml.ml.gradient
 import org.apache.spark.ml.linalg.{DenseVector, SparseVector}
 import org.dma.sketchml.ml.gradient.Kind.Kind
 import org.dma.sketchml.ml.util.Maths
+import org.dma.sketchml.sketch.base.SketchMLException
 
-class DenseDoubleGradient(d: Int, val values: Array[Double]) extends Gradient(d) {
-  def this(d: Int) = this(d, new Array[Double](d))
+class DenseFloatGradient(d: Int, val values: Array[Float]) extends Gradient(d) {
+  def this(d: Int) = this(d, new Array[Float](d))
+
+  def this(grad: Gradient) {
+    this(grad.dim, new Array[Float](grad.dim))
+    grad.kind match {
+      case Kind.DenseDouble => fromDense(grad.asInstanceOf[DenseDoubleGradient])
+      case Kind.SparseDouble => fromSparse(grad.asInstanceOf[SparseDoubleGradient])
+      case _ => throw new SketchMLException(s"Cannot create ${this.kind} from ${grad.kind}")
+    }
+  }
+
+  def fromDense(dense: DenseDoubleGradient): Unit = {
+    val dv = dense.values
+    for (i <- 0 until dim)
+      values(i) = dv(i).toFloat
+  }
+
+  def fromSparse(sparse: SparseDoubleGradient): Unit = {
+    val k = sparse.indices
+    val v = sparse.values
+    for (i <- k.indices)
+      values(k(i)) = v(i).toFloat
+  }
 
   override def plusBy(dense: DenseDoubleGradient): Gradient = {
     for (i <- 0 until dim)
-      values(i) += dense.values(i)
+      values(i) += dense.values(i).toFloat
     this
   }
 
@@ -17,7 +40,7 @@ class DenseDoubleGradient(d: Int, val values: Array[Double]) extends Gradient(d)
     val k = sparse.indices
     val v = sparse.values
     for (i <- k.indices)
-      values(k(i)) += v(i)
+      values(k(i)) += v(i).toFloat
     this
   }
 
@@ -39,22 +62,25 @@ class DenseDoubleGradient(d: Int, val values: Array[Double]) extends Gradient(d)
 
   override def plusBy(dense: DenseVector, x: Double): Gradient = {
     val v = dense.values
+    val x_ = x.toFloat
     for (i <- 0 until dim)
-      values(i) += v(i) * x
+      values(i) += v(i).toFloat * x_
     this
   }
 
   override def plusBy(sparse: SparseVector, x: Double): Gradient = {
     val k = sparse.indices
     val v = sparse.values
+    val x_ = x.toFloat
     for (i <- k.indices)
-      values(k(i)) += v(i) * x
+      values(k(i)) += v(i).toFloat * x_
     this
   }
 
   override def timesBy(x: Double): Unit = {
+    val x_ = x.toFloat
     for (i <- 0 until dim)
-      values(i) *= x
+      values(i) *= x_
   }
 
   override def countNNZ: Int = {
@@ -65,7 +91,8 @@ class DenseDoubleGradient(d: Int, val values: Array[Double]) extends Gradient(d)
     nnz
   }
 
-  override def toDense: DenseDoubleGradient = this
+  override def toDense: DenseDoubleGradient =
+    new DenseDoubleGradient(dim, values.map(_.toDouble))
 
   override def toSparse: SparseDoubleGradient = toSparse(countNNZ)
 
@@ -90,6 +117,6 @@ class DenseDoubleGradient(d: Int, val values: Array[Double]) extends Gradient(d)
     if (nnz > dim * 2 / 3) toDense else toSparse(nnz)
   }
 
-  override def kind: Kind = Kind.DenseDouble
+  override def kind: Kind = Kind.DenseFloat
 
 }

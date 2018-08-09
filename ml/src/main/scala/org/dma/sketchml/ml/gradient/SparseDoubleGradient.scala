@@ -1,93 +1,46 @@
 package org.dma.sketchml.ml.gradient
 
-import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap
-import org.apache.spark.ml.linalg
-import org.apache.spark.ml.linalg.{DenseVector, SparseVector}
 import org.dma.sketchml.ml.gradient.Kind.Kind
 import org.dma.sketchml.ml.util.Maths
-import org.dma.sketchml.sketch.util.Sort
 
-class SparseDoubleGradient(d: Int, val hashmap: Int2DoubleOpenHashMap) extends Gradient(d) {
-  def this(d: Int) = this(d, new Int2DoubleOpenHashMap())
-
-  def this(d: Int, indices: Array[Int], values: Array[Double]) =
-    this(d, new Int2DoubleOpenHashMap(indices, values))
-
-  override def plusBy(sparse: SparseDoubleGradient): Gradient = {
-    val iterator = sparse.hashmap.int2DoubleEntrySet().fastIterator()
-    while (iterator.hasNext) {
-      val entry = iterator.next()
-      hashmap.addTo(entry.getIntKey, entry.getDoubleValue)
-    }
-    this
+class SparseDoubleGradient(d: Int, val indices: Array[Int],
+                           val values: Array[Double]) extends Gradient(d) {
+  {
+    require(indices.length == values.length,
+      s"Sizes of indices and values not match: ${indices.length} & ${values.length}")
+    require(indices.head >= 0, s"Negative index: ${indices.head}.")
+    for (i <- 1 until indices.length)
+      require(indices(i - 1) < indices(i), s"Indices are not strictly increasing")
+    require(indices.last < dim, s"Index ${indices.last} out of bounds for gradient of dimension $dim")
   }
 
-  override def plusBy(sparseSorted: SparseSortedDoubleGradient): Gradient = {
-    val k = sparseSorted.indices
-    val v = sparseSorted.values
-    for (i <- k.indices)
-      hashmap.addTo(k(i), v(i))
-    this
-  }
-
-  override def plusBy(sparse: SparseVector, x: Double): Gradient = {
-    val k = sparse.indices
-    val v = sparse.values
-    for (i <- k.indices)
-      hashmap.addTo(k(i), v(i) * x)
-    this
-  }
+  //override def plusBy(sparse: SparseDoubleGradient): Gradient = {
+  //  val kv = Maths.add(this.indices, this.values, sparse.indices, sparse.values)
+  //  new SparseDoubleGradient(dim, kv._1, kv._2)
+  //}
 
   override def timesBy(x: Double): Unit = {
-    val iterator = hashmap.int2DoubleEntrySet().fastIterator()
-    while (iterator.hasNext) {
-      val entry = iterator.next()
-      hashmap.put(entry.getIntKey, entry.getDoubleValue * x)
-    }
+    for (i <- values.indices)
+      values(i) *= x
   }
 
   override def countNNZ: Int = {
     var nnz = 0
-    val iterator = hashmap.int2DoubleEntrySet().fastIterator()
-    while (iterator.hasNext) {
-      val entry = iterator.next()
-      if (Math.abs(entry.getDoubleValue) > Maths.EPS)
+    for (i <- values.indices)
+      if (Math.abs(values(i)) > Maths.EPS)
         nnz += 1
-    }
     nnz
   }
 
   override def toDense: DenseDoubleGradient = {
     val dense = new Array[Double](dim)
-    val iterator = hashmap.int2DoubleEntrySet().fastIterator()
-    while (iterator.hasNext) {
-      val entry = iterator.next()
-      if (Math.abs(entry.getDoubleValue) > Maths.EPS)
-        dense(entry.getIntKey) = entry.getDoubleValue
-    }
+    for (i <- values.indices)
+      if (Math.abs(values(i)) > Maths.EPS)
+        dense(indices(i)) = values(i)
     new DenseDoubleGradient(dim, dense)
   }
 
   override def toSparse: SparseDoubleGradient = this
-
-  override def toSparseSorted: SparseSortedDoubleGradient = toSparseSorted(countNNZ)
-
-  private def toSparseSorted(nnz: Int): SparseSortedDoubleGradient = {
-    val k = new Array[Int](nnz)
-    val v = new Array[Double](nnz)
-    var cnt = 0
-    val iterator = hashmap.int2DoubleEntrySet().fastIterator()
-    while (iterator.hasNext && cnt < nnz) {
-      val entry = iterator.next()
-      if (Math.abs(entry.getDoubleValue) > Maths.EPS) {
-        k(cnt) = entry.getIntKey
-        v(cnt) = entry.getDoubleValue
-        cnt += 1
-      }
-    }
-    Sort.quickSort(k, v, 0, nnz - 1)
-    new SparseSortedDoubleGradient(dim, k, v)
-  }
 
   override def toAuto: Gradient = {
     val nnz = countNNZ

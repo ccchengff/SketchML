@@ -1,27 +1,46 @@
 package org.dma.sketchml.ml.algorithm
 
-import org.apache.spark.ml.linalg.{DenseVector, Vectors}
+import org.apache.spark.broadcast.Broadcast
+import org.apache.spark.ml.linalg.DenseVector
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.{SparkContext, SparkEnv}
 import org.dma.sketchml.ml.data.{DataSet, Parser}
-import org.dma.sketchml.ml.common.Storage.Data._
-import org.dma.sketchml.ml.common.Storage.Model._
 import org.dma.sketchml.ml.conf.MLConf
-import org.dma.sketchml.ml.gradient.{DenseDoubleGradient, Gradient, SparseDoubleGradient}
-import org.dma.sketchml.ml.objective.{Adam, L2HingeLoss, L2LogLoss, L2SquareLoss}
+import org.dma.sketchml.ml.gradient.Gradient
+import org.dma.sketchml.ml.objective.{GradientDescent, Loss}
 import org.dma.sketchml.ml.util.ValidationUtil
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
 
+object GeneralizedLinearModel {
+  private val logger: Logger = LoggerFactory.getLogger(GeneralizedLinearModel.getClass)
+
+  object Model {
+    var weights: DenseVector = _
+    var optimizer: GradientDescent = _
+    var loss: Loss = _
+    var gradient: Gradient = _
+  }
+
+  object Data {
+    var trainData: DataSet = _
+    var validData: DataSet = _
+  }
+
+}
+
+import GeneralizedLinearModel.Model._
+import GeneralizedLinearModel.Data._
+
 abstract class GeneralizedLinearModel(@transient protected val conf: MLConf) extends Serializable {
-  @transient protected val logger: Logger = LoggerFactory.getLogger(getName)
+  @transient protected val logger: Logger = GeneralizedLinearModel.logger
 
   @transient protected implicit val sc: SparkContext = SparkContext.getOrCreate()
   @transient protected var executors: RDD[Int] = _
-  protected val bcConf = sc.broadcast(conf)
+  protected val bcConf: Broadcast[MLConf] = sc.broadcast(conf)
 
   def loadData(): Unit = {
     val startTime = System.currentTimeMillis()
@@ -59,12 +78,14 @@ abstract class GeneralizedLinearModel(@transient protected val conf: MLConf) ext
   protected def initModel(): Unit
 
   def train(): Unit = {
+    logger.info(s"Start to train a $getName model")
+    logger.info(s"Configuration: $conf")
     val startTime = System.currentTimeMillis()
     initModel()
 
     val trainLosses = ArrayBuffer[Double](conf.epochNum)
     val validLosses = ArrayBuffer[Double](conf.epochNum)
-    val timeElapsed = ArrayBuffer[Double](conf.epochNum)
+    val timeElapsed = ArrayBuffer[Long](conf.epochNum)
     val batchNum = Math.ceil(1.0 / conf.batchSpRatio).toInt
     for (epoch <- 0 until conf.epochNum) {
       logger.info(s"Epoch[$epoch] start training")
@@ -78,8 +99,6 @@ abstract class GeneralizedLinearModel(@transient protected val conf: MLConf) ext
     logger.info(s"Train loss: [${trainLosses.mkString(", ")}]")
     logger.info(s"Valid loss: [${validLosses.mkString(", ")}]")
     logger.info(s"Time: [${timeElapsed.mkString(", ")}]")
-
-    while (1 + 1 == 2) {}
   }
 
   protected def trainOneEpoch(epoch: Int, batchNum: Int): Double = {
@@ -103,7 +122,7 @@ abstract class GeneralizedLinearModel(@transient protected val conf: MLConf) ext
     batchLoss
   }
 
-  def computeGradient(epoch: Int, batch: Int): Double = {
+  protected def computeGradient(epoch: Int, batch: Int): Double = {
     val miniBatchGDStart = System.currentTimeMillis()
     val (batchSize, objLoss, regLoss) = executors.aggregate(0, 0.0, 0.0)(
       seqOp = (_, _) => {
@@ -121,12 +140,13 @@ abstract class GeneralizedLinearModel(@transient protected val conf: MLConf) ext
     batchLoss
   }
 
-  def aggregateAndUpdate(epoch: Int, batch: Int): Unit = {
+  protected def aggregateAndUpdate(epoch: Int, batch: Int): Unit = {
     val aggrStart = System.currentTimeMillis()
-    val grad = executors.aggregate(Gradient.zero.asInstanceOf[Gradient])(
-      seqOp = (_, _) => Gradient.transform(gradient),
-      combOp = (c1, c2) => c1 += c2
+    val sum = Gradient.sum(
+      conf.featureNum,
+      executors.map(_ => Gradient.compress(gradient, bcConf.value)).collect()
     )
+    val grad = Gradient.compress(sum, conf)
     grad.timesBy(1.0 / conf.workerNum)
     logger.info(s"Epoch[$epoch] batch $batch aggregate gradients cost "
       + s"${System.currentTimeMillis() - aggrStart} ms")
@@ -138,7 +158,7 @@ abstract class GeneralizedLinearModel(@transient protected val conf: MLConf) ext
       + s"${System.currentTimeMillis() - updateStart} ms")
   }
 
-  def validate(epoch: Int): Double = {
+  protected def validate(epoch: Int): Double = {
     val validStart = System.currentTimeMillis()
     val (sumLoss, truePos, trueNeg, falsePos, falseNeg, validNum) =
       executors.aggregate((0.0, 0, 0, 0, 0, 0))(
@@ -160,45 +180,4 @@ abstract class GeneralizedLinearModel(@transient protected val conf: MLConf) ext
 
 }
 
-
-class LRModel(_conf: MLConf) extends GeneralizedLinearModel(_conf) {
-  override protected def initModel(): Unit = {
-    executors.foreach(_ => {
-      dim = bcConf.value.featureNum
-      weights = Vectors.dense(new Array[Double](dim)).asInstanceOf[DenseVector]
-      optimizer = Adam(bcConf.value)
-      loss = new L2LogLoss(bcConf.value.l2Reg)
-    })
-  }
-
-  override def getName: String = "LRModel"
-}
-
-
-class SVMModel(_conf: MLConf) extends GeneralizedLinearModel(_conf) {
-  override protected def initModel(): Unit = {
-    executors.foreach(_ => {
-      dim = bcConf.value.featureNum
-      weights = Vectors.dense(new Array[Double](dim)).asInstanceOf[DenseVector]
-      optimizer = Adam(bcConf.value)
-      loss = new L2HingeLoss(bcConf.value.l2Reg)
-    })
-  }
-
-  override def getName: String = "SVMModel"
-}
-
-
-class LinearRegModel(_conf: MLConf) extends GeneralizedLinearModel(_conf) {
-  override protected def initModel(): Unit = {
-    executors.foreach(_ => {
-      dim = bcConf.value.featureNum
-      weights = Vectors.dense(new Array[Double](dim)).asInstanceOf[DenseVector]
-      optimizer = Adam(bcConf.value)
-      loss = new L2SquareLoss(bcConf.value.l2Reg)
-    })
-  }
-
-  override def getName: String = "LinearRegModel"
-}
 

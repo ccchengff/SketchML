@@ -3,15 +3,16 @@ package org.dma.sketchml.ml.data
 import org.apache.spark.SparkContext
 import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.rdd.RDD
+import org.dma.sketchml.ml.common.Constants
 import org.dma.sketchml.ml.util.Maths
 
 object Parser {
   def loadData(input: String, format: String, maxDim: Int, numPartition: Int,
                negY: Boolean = true)(implicit sc: SparkContext): RDD[LabeledData] = {
-    val parse: (String, Int, Boolean) => LabeledData = format.toLowerCase() match {
-      case "libsvm" => Parser.parseLibSVM
-      case "csv" => Parser.parseCSV
-      case "dummy" => Parser.parseDummy
+    val parse: (String, Int, Boolean) => LabeledData = format match {
+      case Constants.FORMAT_LIBSVM => Parser.parseLibSVM
+      case Constants.FORMAT_CSV => Parser.parseCSV
+      case Constants.FORMAT_DUMMY => Parser.parseDummy
       case _ => throw new UnknownError("Unknown file format: " + format)
     }
     sc.textFile(input)

@@ -35,7 +35,7 @@ public class HeapQuantileSketch extends QuantileSketch {
 
     public HeapQuantileSketch(int k, long estimateN) {
         super(estimateN);
-        SketchUtils.checkK(k);
+        QSketchUtils.checkK(k);
         this.k = k;
         reset();
     }
@@ -60,7 +60,7 @@ public class HeapQuantileSketch extends QuantileSketch {
         else if (estimateN < k * 2)
             combinedBufferCapacity = k * 4;
         else
-            combinedBufferCapacity = SketchUtils.needBufferCapacity(k, estimateN);
+            combinedBufferCapacity = QSketchUtils.needBufferCapacity(k, estimateN);
         combinedBuffer = new double[combinedBufferCapacity];
         baseBufferCount = 0;
         bitPattern = 0L;
@@ -110,7 +110,7 @@ public class HeapQuantileSketch extends QuantileSketch {
         Arrays.sort(baseBuffer, 0, baseBufferCount);
         inPlacePropagationUpdate(0, baseBuffer, 0);
         baseBufferCount = 0;
-        SketchUtils.checkBitPattern(bitPattern, n, k);
+        QSketchUtils.checkBitPattern(bitPattern, n, k);
     }
 
     private void inPlacePropagationUpdate(int beginLevel, final double[] buf, int bufBeginPos) {
@@ -118,21 +118,21 @@ public class HeapQuantileSketch extends QuantileSketch {
         int endLevel = beginLevel;
         long tmp = bitPattern >>> beginLevel;
         while ((tmp & 1) != 0) { tmp >>>= 1; endLevel++; }
-        SketchUtils.compactBuffer(buf, bufBeginPos, levelsArr, (endLevel + 2) * k, k);
-        SketchUtils.levelwisePropagation(bitPattern, k, beginLevel, endLevel, buf, bufBeginPos, levelsArr);
+        QSketchUtils.compactBuffer(buf, bufBeginPos, levelsArr, (endLevel + 2) * k, k);
+        QSketchUtils.levelwisePropagation(bitPattern, k, beginLevel, endLevel, buf, bufBeginPos, levelsArr);
         bitPattern += 1L << beginLevel;
     }
 
     public void makeSummary() {
         int baseBufferItems = (int)(n % (k * 2));
-        SketchUtils.checkBitPattern(bitPattern, n, k);
+        QSketchUtils.checkBitPattern(bitPattern, n, k);
         int validLevels = Long.bitCount(bitPattern);
         int numSamples = baseBufferItems + validLevels * k;
         samplesArr = new double[numSamples];
         weightsArr = new long[numSamples + 1];
 
         copyBuf2Arr(numSamples);
-        SketchUtils.blockyMergeSort(samplesArr, weightsArr, numSamples, k);
+        QSketchUtils.blockyMergeSort(samplesArr, weightsArr, numSamples, k);
 
         long cnt = 0L;
         for (int i = 0; i <= numSamples; i++) {
@@ -187,7 +187,7 @@ public class HeapQuantileSketch extends QuantileSketch {
         if (other == null || other.isEmpty()) return;
         if (other.k != this.k)
             throw new QuantileSketchException("Merge sketches with different k");
-        SketchUtils.checkBitPattern(other.bitPattern, other.n, other.k);
+        QSketchUtils.checkBitPattern(other.bitPattern, other.n, other.k);
         if (this.isEmpty()) {
             this.copy(other);
             return;
@@ -223,7 +223,7 @@ public class HeapQuantileSketch extends QuantileSketch {
         long tmp = bitPattern >>> beginLevel;
         while ((tmp & 1) != 0) { tmp >>>= 1; endLevel++; }
         System.arraycopy(buf, bufStart, levelsArr, k * (endLevel + 2), k);
-        SketchUtils.levelwisePropagation(bitPattern, k, beginLevel, endLevel, auxBuf, auxBufStart, levelsArr);
+        QSketchUtils.levelwisePropagation(bitPattern, k, beginLevel, endLevel, auxBuf, auxBufStart, levelsArr);
         bitPattern += 1L << beginLevel;
     }
 
@@ -251,7 +251,7 @@ public class HeapQuantileSketch extends QuantileSketch {
 
     @Override
     public double getQuantile(double fraction) {
-        SketchUtils.checkFraction(fraction);
+        QSketchUtils.checkFraction(fraction);
         if (samplesArr == null || weightsArr == null)
             makeSummary();
 
@@ -268,7 +268,7 @@ public class HeapQuantileSketch extends QuantileSketch {
 
     @Override
     public double[] getQuantiles(double[] fractions) {
-        SketchUtils.checkFractions(fractions);
+        QSketchUtils.checkFractions(fractions);
         if (samplesArr == null || weightsArr == null)
             makeSummary();
 
@@ -291,7 +291,7 @@ public class HeapQuantileSketch extends QuantileSketch {
 
     @Override
     public double[] getQuantiles(int evenPartition) {
-        SketchUtils.checkEvenPartiotion(evenPartition);
+        QSketchUtils.checkEvenPartiotion(evenPartition);
         if (samplesArr == null || weightsArr == null)
             makeSummary();
 

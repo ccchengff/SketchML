@@ -3,7 +3,7 @@ package org.dma.sketchml.ml.objective
 import org.apache.spark.ml.linalg.DenseVector
 import org.dma.sketchml.ml.conf.MLConf
 import org.dma.sketchml.ml.data.DataSet
-import org.dma.sketchml.ml.gradient.{DenseDoubleGradient, Gradient, SparseDoubleGradient, SparseSortedDoubleGradient}
+import org.dma.sketchml.ml.gradient._
 import org.slf4j.{Logger, LoggerFactory}
 
 object GradientDescent {
@@ -44,7 +44,7 @@ class GradientDescent(dim: Int, lr_0: Double, decay: Double, batchSpRatio: Doubl
 
     logger.info(s"Epoch[$epoch] batch $batch gradient " +
       s"cost ${System.currentTimeMillis() - startTime} ms, "
-      + s"batch size=$batchSize, obj loss=$objLoss, reg loss=$regLoss")
+      + s"batch size=$batchSize, obj loss=${objLoss / batchSize}, reg loss=$regLoss")
     batch += 1
     if (batch == batchNum) { epoch += 1; batch = 0 }
     (grad, batchSize, objLoss, regLoss)
@@ -53,20 +53,7 @@ class GradientDescent(dim: Int, lr_0: Double, decay: Double, batchSpRatio: Doubl
   private def l1Reg(grad: Gradient, alpha: Double, theta: Double): Unit = {
     val values = grad match {
       case dense: DenseDoubleGradient => dense.values
-      case sparseSorted: SparseSortedDoubleGradient => sparseSorted.values
-      case sparse: SparseDoubleGradient => {
-        val iterator = sparse.hashmap.int2DoubleEntrySet().fastIterator()
-        while (iterator.hasNext) {
-          val entry = iterator.next()
-          val k = entry.getIntKey
-          val v = entry.getDoubleValue
-          if (v >= 0 && v <= theta)
-            sparse.hashmap.put(k, (v - alpha) max 0)
-          else if (v < 0 && v >= -theta)
-            sparse.hashmap.put(k, (v - alpha) min 0)
-        }
-        null
-      }
+      case sparse: SparseDoubleGradient => sparse.values
       case _ => throw new UnsupportedOperationException(
         s"Cannot regularize ${grad.kind} kind of gradients")
     }
@@ -89,15 +76,8 @@ class GradientDescent(dim: Int, lr_0: Double, decay: Double, batchSpRatio: Doubl
           v(i) += w(i) * lambda
       }
       case sparse: SparseDoubleGradient => {
-        val iterator = sparse.hashmap.int2DoubleEntrySet().fastIterator()
-        while (iterator.hasNext) {
-          val entry = iterator.next()
-          sparse.hashmap.addTo(entry.getIntKey, w(entry.getIntKey) * lambda)
-        }
-      }
-      case sparseSorted: SparseSortedDoubleGradient => {
-        val k = sparseSorted.indices
-        val v = sparseSorted.values
+        val k = sparse.indices
+        val v = sparse.values
         for (i <- k.indices)
           v(i) += w(k(i)) * lambda
       }
@@ -111,7 +91,9 @@ class GradientDescent(dim: Int, lr_0: Double, decay: Double, batchSpRatio: Doubl
     grad match {
       case dense: DenseDoubleGradient => update(dense, weight, lr)
       case sparse: SparseDoubleGradient => update(sparse, weight, lr)
-      case sparseSorted: SparseSortedDoubleGradient => update(sparseSorted, weight, lr)
+      case dense: DenseFloatGradient => update(dense, weight, lr)
+      case sparse: SparseFloatGradient => update(sparse, weight, lr)
+      case sketchGrad: SketchGradient => update(sketchGrad.toAuto, weight)
     }
   }
 
@@ -123,15 +105,21 @@ class GradientDescent(dim: Int, lr_0: Double, decay: Double, batchSpRatio: Doubl
   }
 
   private def update(grad: SparseDoubleGradient, weight: DenseVector, lr: Double): Unit = {
-    val iterator = grad.hashmap.int2DoubleEntrySet().fastIterator()
+    val k = grad.indices
+    val v = grad.values
     val w = weight.values
-    while (iterator.hasNext) {
-      val entry = iterator.next()
-      w(entry.getIntKey) -= entry.getDoubleValue * lr
-    }
+    for (i <- k.indices)
+      w(k(i)) -= v(i) * lr
   }
 
-  private def update(grad: SparseSortedDoubleGradient, weight: DenseVector, lr: Double): Unit = {
+  private def update(grad: DenseFloatGradient, weight: DenseVector, lr: Double): Unit = {
+    val g = grad.values
+    val w = weight.values
+    for (i <- w.indices)
+      w(i) -= g(i) * lr
+  }
+
+  private def update(grad: SparseFloatGradient, weight: DenseVector, lr: Double): Unit = {
     val k = grad.indices
     val v = grad.values
     val w = weight.values

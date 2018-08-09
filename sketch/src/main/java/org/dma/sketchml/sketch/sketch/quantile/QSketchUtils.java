@@ -5,7 +5,7 @@ import org.dma.sketchml.sketch.util.Maths;
 import java.util.Arrays;
 import java.util.Random;
 
-public class SketchUtils {
+public class QSketchUtils {
     private static final Random rand = new Random();
 
     protected static void checkK(int k) {
@@ -75,9 +75,9 @@ public class SketchUtils {
         for (int level = beginLevel; level < endLevel; level++) {
             if ((bitPattern & (1L << level)) == 0)
                 throw new QuantileSketchException("Encounter empty level: " + level);
-            SketchUtils.mergeArrays(levelsArr, k * (level + 2),
+            QSketchUtils.mergeArrays(levelsArr, k * (level + 2),
                     levelsArr, k * (endLevel + 2), buf, bufBeginPos, k);
-            SketchUtils.compactBuffer(buf, bufBeginPos, levelsArr, k * (endLevel + 2), k);
+            QSketchUtils.compactBuffer(buf, bufBeginPos, levelsArr, k * (endLevel + 2), k);
         }
     }
 

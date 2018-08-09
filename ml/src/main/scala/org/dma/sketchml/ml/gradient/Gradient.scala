@@ -2,17 +2,46 @@ package org.dma.sketchml.ml.gradient
 
 import javax.inject.Singleton
 import org.apache.spark.ml.linalg.{DenseVector, SparseVector, Vector}
+import org.dma.sketchml.ml.common.Constants
+import org.dma.sketchml.ml.conf.MLConf
 import org.dma.sketchml.ml.gradient.Kind.Kind
+import org.dma.sketchml.sketch.base.SketchMLException
+import org.slf4j.{Logger, LoggerFactory}
 
 object Gradient {
   def zero: ZeroGradient = ZeroGradient.getInstance()
 
-  def transform(grad: Gradient): Gradient = {
-    grad.toSparse
+  private def logger: Logger = LoggerFactory.getLogger(Gradient.getClass)
+
+  def compress(grad: Gradient, conf: MLConf): Gradient = {
+    val startTime = System.currentTimeMillis()
+    val res = conf.compressor match {
+      case Constants.GRADIENT_COMPRESSOR_SKETCH =>
+        new SketchGradient(grad, conf.quantBinNum, conf.sketchGroupNum,
+          conf.sketchRowNum, conf.sketchColRatio)
+      case Constants.GRADIENT_COMPRESSOR_FLOAT =>
+        grad.kind match {
+          case Kind.DenseDouble => new DenseFloatGradient(grad)
+          case Kind.SparseDouble => SparseFloatGradient(grad)
+        }
+      case Constants.GRADIENT_COMPRESSOR_NONE => grad
+      case _ => throw new SketchMLException(
+        "Unrecognizable compressor: " + conf.compressor)
+    }
+    logger.info(s"Gradient compression from ${grad.kind} to ${res.kind} cost " +
+      s"${System.currentTimeMillis() - startTime} ms")
+    res
+  }
+
+  def sum(dim: Int, grads: Array[Gradient]): Gradient = {
+    require(!grads.exists(_.dim != dim))
+    val sum = new DenseDoubleGradient(dim)
+    grads.foreach(sum.plusBy)
+    sum.toAuto
   }
 }
 
-abstract class Gradient(protected val dim: Int) extends Serializable {
+abstract class Gradient(val dim: Int) extends Serializable {
   require(dim > 0, s"Dimension is non-positive: $dim")
 
   def plusBy(o: Gradient): Gradient = {
@@ -24,7 +53,9 @@ abstract class Gradient(protected val dim: Int) extends Serializable {
       o.kind match {
         case Kind.DenseDouble => plusBy(o.asInstanceOf[DenseDoubleGradient])
         case Kind.SparseDouble => plusBy(o.asInstanceOf[SparseDoubleGradient])
-        case Kind.SparseSortedDouble => plusBy(o.asInstanceOf[SparseSortedDoubleGradient])
+        case Kind.DenseFloat => plusBy(o.asInstanceOf[DenseFloatGradient])
+        case Kind.SparseFloat => plusBy(o.asInstanceOf[SparseFloatGradient])
+        case Kind.Sketch => plusBy(o.asInstanceOf[SketchGradient])
         case _ => throw new ClassNotFoundException(o.getClass.getName)
       }
     }
@@ -36,8 +67,14 @@ abstract class Gradient(protected val dim: Int) extends Serializable {
   def plusBy(sparse: SparseDoubleGradient): Gradient = throw new
       UnsupportedOperationException(s"Cannot to add ${sparse.kind} to ${this.kind}")
 
-  def plusBy(sparseSorted: SparseSortedDoubleGradient): Gradient = throw new
-      UnsupportedOperationException(s"Cannot to add ${sparseSorted.kind} to ${this.kind}")
+  def plusBy(dense: DenseFloatGradient): Gradient = throw new
+      UnsupportedOperationException(s"Cannot to add ${dense.kind} to ${this.kind}")
+
+  def plusBy(sparse: SparseFloatGradient): Gradient = throw new
+      UnsupportedOperationException(s"Cannot to add ${sparse.kind} to ${this.kind}")
+
+  def plusBy(sketchGrad: SketchGradient): Gradient = throw new
+      UnsupportedOperationException(s"Cannot to add ${sketchGrad.kind} to ${this.kind}")
 
   def plusBy(v: Vector, x: Double): Gradient = {
     v match {
@@ -59,8 +96,6 @@ abstract class Gradient(protected val dim: Int) extends Serializable {
   def toDense: DenseDoubleGradient
 
   def toSparse: SparseDoubleGradient
-
-  def toSparseSorted: SparseSortedDoubleGradient
 
   def toAuto: Gradient
 
@@ -91,8 +126,6 @@ class ZeroGradient private extends Gradient(1) {
 
   override def toSparse: SparseDoubleGradient = ???
 
-  override def toSparseSorted: SparseSortedDoubleGradient = ???
-
   override def toAuto: Gradient = ???
 
   override def kind: Kind = Kind.ZeroGradient
@@ -101,6 +134,12 @@ class ZeroGradient private extends Gradient(1) {
 
   override def plusBy(sparse: SparseDoubleGradient): Gradient = sparse
 
-  override def plusBy(sparseSorted: SparseSortedDoubleGradient): Gradient = sparseSorted
+  override def plusBy(dense: DenseFloatGradient): Gradient = dense
+
+  override def plusBy(sparse: SparseFloatGradient): Gradient = sparse
+
+  override def plusBy(sketchGrad: SketchGradient): Gradient = sketchGrad
+
+
 }
 

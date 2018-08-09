@@ -86,9 +86,8 @@ public class App {
         Pair<int[], double[]> dResult = compressor.decompressSparse();
         int[] dKeys = dResult.getLeft();
         double[] dValues = dResult.getRight();
-        Sort.quickSort(dKeys, dValues, 0, dKeys.length - 1);
         LOG.info(String.format("Array length: [%d, %d] vs. [%d, %d]",
-                nnz, nnz, nnz, nnz));
+                nnz, nnz, dKeys.length, dValues.length));
         LOG.info("First 10 keys before: " + Arrays.toString(Arrays.copyOf(keys, 10)));
         LOG.info("First 10 keys after:  " + Arrays.toString(Arrays.copyOf(dKeys, 10)));
         LOG.info("First 10 values before: " + Arrays.toString(Arrays.copyOf(values, 10)));
