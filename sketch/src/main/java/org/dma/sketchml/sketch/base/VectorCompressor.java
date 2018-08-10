@@ -2,9 +2,11 @@ package org.dma.sketchml.sketch.base;
 
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.io.IOException;
+import java.io.Serializable;
 import java.util.concurrent.ExecutionException;
 
-public interface VectorCompressor {
+public interface VectorCompressor extends Serializable {
     void compressDense(double[] values);
 
     void compressSparse(int[] keys, double[] values);
@@ -21,5 +23,5 @@ public interface VectorCompressor {
 
     double size();
 
-    int memoryBytes();
+    int memoryBytes() throws IOException;
 }

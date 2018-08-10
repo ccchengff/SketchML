@@ -1,6 +1,6 @@
 package org.dma.sketchml.ml.util
 
-import org.apache.spark.ml.linalg.{DenseVector, SparseVector, Vector}
+import org.apache.spark.ml.linalg.{DenseVector, SparseVector, Vector, Vectors}
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -93,6 +93,17 @@ object Maths {
       }
     }
     dot
+  }
+
+  def euclidean(a: Array[Double], b: Array[Double]): Double = {
+    require(a.length == b.length)
+    (a, b).zipped.map((x, y) => (x - y) * (x - y)).sum
+  }
+
+  def cosine(a: Array[Double], b: Array[Double]): Double = {
+    val va = new DenseVector(a)
+    val vb = new DenseVector(b)
+    dot(va, vb) / (Vectors.norm(va, 2) * Vectors.norm(vb, 2))
   }
 
 }

@@ -16,8 +16,8 @@ public class DeltaBinaryEncoder implements BinaryEncoder, Serializable {
     private static final Logger LOG = LoggerFactory.getLogger(DeltaBinaryEncoder.class);
 
     private BitSet deltaBits;
-    private int size;
     private BitSet flagBits;
+    private int size;
 
     @Override
     public void encode(int[] values) {
@@ -28,8 +28,8 @@ public class DeltaBinaryEncoder implements BinaryEncoder, Serializable {
         for (int i = 0; i < size; i++) {
             int delta = values[i] - prev;
             int bytesNeeded = needBytes(delta);
-            setBits(flagBits, 2 * i, bytesNeeded - 1, 2);
-            setBytes(deltaBits, offset, delta, bytesNeeded);
+            BinaryUtils.setBits(flagBits, 2 * i, bytesNeeded - 1, 2);
+            BinaryUtils.setBytes(deltaBits, offset, delta, bytesNeeded);
             prev = values[i];
             offset += bytesNeeded * 8;
         }
@@ -44,8 +44,8 @@ public class DeltaBinaryEncoder implements BinaryEncoder, Serializable {
         int[] res = new int[size];
         int offset = 0, prev = 0;
         for (int i = 0; i < size; i++) {
-            int bytesNeeded = getBits(flagBits, i * 2, 2) + 1;
-            int delta = getBytes(deltaBits, offset, bytesNeeded);
+            int bytesNeeded = BinaryUtils.getBits(flagBits, i * 2, 2) + 1;
+            int delta = BinaryUtils.getBytes(deltaBits, offset, bytesNeeded);
             res[i] = prev + delta;
             prev = res[i];
             offset += bytesNeeded * 8;
@@ -69,49 +69,30 @@ public class DeltaBinaryEncoder implements BinaryEncoder, Serializable {
         }
     }
 
-    public static void setBits(BitSet bitSet, int offset, int value, int numBits) {
-        for (int i = 0; i < numBits; i++) {
-            boolean bit = (((value) >> i) & 1) == 1;
-            bitSet.set(offset + i, bit);
-        }
-    }
-
-    public static void setBytes(BitSet bitSet, int offset, int value, int numBytes) {
-        setBits(bitSet, offset, value, numBytes * 8);
-    }
-
-    public static int getBits(BitSet bitSet, int offset, int numBits) {
-        int res = 0;
-        for (int i = 0; i < numBits; i++) {
-            if (bitSet.get(offset + i)) {
-                res |= 1 << i;
+    private void writeObject(ObjectOutputStream oos) throws IOException {
+        oos.writeInt(size);
+        if (flagBits == null) {
+            oos.writeInt(0);
+        } else {
+            long[] flags = flagBits.toLongArray();
+            oos.writeInt(flags.length);
+            for (long l : flags) {
+                oos.writeLong(l);
             }
         }
-        return res;
-    }
-
-    public static int getBytes(BitSet bitSet, int offset, int numBytes) {
-        return getBits(bitSet, offset, numBytes * 8);
-    }
-
-    private void writeObject(ObjectOutputStream oos) throws IOException {
-        LOG.info("Serializing DeltaBinaryEncoder with size: " + size);
-        oos.writeInt(size);
-        long[] flags = flagBits.toLongArray();
-        oos.writeInt(flags.length);
-        for (long l : flags) {
-            oos.writeLong(l);
-        }
-        long[] delta = deltaBits.toLongArray();
-        oos.writeInt(delta.length);
-        for (long l : delta) {
-            oos.writeLong(l);
+        if (deltaBits == null) {
+            oos.writeInt(0);
+        } else {
+            long[] delta = deltaBits.toLongArray();
+            oos.writeInt(delta.length);
+            for (long l : delta) {
+                oos.writeLong(l);
+            }
         }
     }
 
     private void readObject(ObjectInputStream ois) throws ClassNotFoundException, IOException {
         size = ois.readInt();
-        LOG.info("Deserializing DeltaBinaryEncoder with size: " + size);
         int flagsLength = ois.readInt();
         long[] flags = new long[flagsLength];
         for (int i = 0; i < flagsLength; i++) {
@@ -124,10 +105,5 @@ public class DeltaBinaryEncoder implements BinaryEncoder, Serializable {
             delta[i] = ois.readLong();
         }
         deltaBits = BitSet.valueOf(delta);
-    }
-
-    @Override
-    public int memoryBytes() {
-        return 4 + (int) (Math.ceil(flagBits.length() / 8.0) + Math.ceil(deltaBits.length() / 8.0));
     }
 }

@@ -5,7 +5,9 @@ import org.apache.spark.ml.linalg.{DenseVector, SparseVector, Vector}
 import org.dma.sketchml.ml.common.Constants
 import org.dma.sketchml.ml.conf.MLConf
 import org.dma.sketchml.ml.gradient.Kind.Kind
+import org.dma.sketchml.ml.util.Maths
 import org.dma.sketchml.sketch.base.SketchMLException
+import org.dma.sketchml.sketch.util.Utils
 import org.slf4j.{Logger, LoggerFactory}
 
 object Gradient {
@@ -30,6 +32,8 @@ object Gradient {
     }
     logger.info(s"Gradient compression from ${grad.kind} to ${res.kind} cost " +
       s"${System.currentTimeMillis() - startTime} ms")
+    // uncomment to evaluate the performance of compression
+    //evaluateCompression(grad, res)
     res
   }
 
@@ -38,6 +42,22 @@ object Gradient {
     val sum = new DenseDoubleGradient(dim)
     grads.foreach(sum.plusBy)
     sum.toAuto
+  }
+
+  def evaluateCompression(origin: Gradient, comp: Gradient): Unit = {
+    // distances
+    val (vOrig, vComp) = origin.kind match {
+      case Kind.DenseDouble => (origin.asInstanceOf[DenseDoubleGradient].values, comp.toDense.values)
+      case Kind.SparseDouble => (origin.asInstanceOf[SparseDoubleGradient].values, comp.toSparse.values)
+    }
+    logger.info(s"Distances: euclidean[${Maths.euclidean(vOrig, vComp)}], " +
+      s"cosine[${Maths.cosine(vOrig, vComp)}]")
+    // size
+    val sizeOrig = Utils.sizeof(origin)
+    val sizeComp = Utils.sizeof(comp)
+    val rate = 1.0 * sizeOrig / sizeComp
+    logger.info(s"Sizeof gradients: nnz[${vOrig.length}], " +
+      s"origin[$sizeOrig bytes], comp[$sizeComp bytes], rate[$rate]")
   }
 }
 

@@ -7,14 +7,15 @@ import org.dma.sketchml.sketch.sketch.frequency.GroupedMinMaxSketch;
 import org.dma.sketchml.sketch.base.Quantizer;
 import org.dma.sketchml.sketch.base.SketchMLException;
 import org.dma.sketchml.sketch.base.VectorCompressor;
+import org.dma.sketchml.sketch.util.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.Serializable;
+import java.io.*;
 import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 
-public class SparseVectorCompressor implements VectorCompressor, Serializable {
+public class SparseVectorCompressor implements VectorCompressor {
     private static final Logger LOG = LoggerFactory.getLogger(SparseVectorCompressor.class);
 
     private int size;
@@ -57,7 +58,7 @@ public class SparseVectorCompressor implements VectorCompressor, Serializable {
         }
         size = keys.length;
         // 1. quantize into bin indexes
-        Quantizer quantizer = CompressUtil.newQuantizer(quantType, quantBinNum);
+        Quantizer quantizer = Quantizer.newQuantizer(quantType, quantBinNum);
         quantizer.quantize(values);
         quantValues = quantizer.getValues();
         // 2. encode bins and keys
@@ -86,7 +87,7 @@ public class SparseVectorCompressor implements VectorCompressor, Serializable {
         }
         size = keys.length;
         // 1. quantize into bin indexes
-        Quantizer quantizer = CompressUtil.newQuantizer(quantType, quantBinNum);
+        Quantizer quantizer = Quantizer.newQuantizer(quantType, quantBinNum);
         quantizer.parallelQuantize(values);
         quantValues = quantizer.getValues();
         // 2. encode bins and keys
@@ -138,10 +139,10 @@ public class SparseVectorCompressor implements VectorCompressor, Serializable {
     }
 
     @Override
-    public int memoryBytes() {
+    public int memoryBytes() throws IOException {
         int res = 28 + quantValues.length * 8;
         if (mmSketches != null)
-            res += mmSketches.memoryBytes();
+            res += Utils.sizeof(mmSketches);
         return res;
     }
 }

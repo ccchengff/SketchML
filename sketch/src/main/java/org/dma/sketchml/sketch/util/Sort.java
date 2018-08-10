@@ -1,5 +1,6 @@
 package org.dma.sketchml.sketch.util;
 
+import it.unimi.dsi.fastutil.Arrays;
 import it.unimi.dsi.fastutil.doubles.DoubleComparator;
 import it.unimi.dsi.fastutil.ints.IntComparator;
 

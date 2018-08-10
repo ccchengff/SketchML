@@ -2,11 +2,9 @@ package org.dma.sketchml.sketch.hash;
 
 import org.dma.sketchml.sketch.base.Int2IntHash;
 import org.dma.sketchml.sketch.base.SketchMLException;
+import org.dma.sketchml.sketch.util.Maths;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 public class HashFactory {
     private static final Int2IntHash[] int2intHashes =
@@ -28,11 +26,11 @@ public class HashFactory {
                     "hash functions are available", int2intHashes.length));
         } else {
             Int2IntHash[] res = new Int2IntHash[hashNum];
-            List<Integer> idxes = new ArrayList<>(int2intHashes.length);
-            for (int i = 0; i < int2intHashes.length; i++) idxes.add(i);
-            Collections.shuffle(idxes, random);
+            int[] indexes = new int[int2intHashes.length];
+            Arrays.setAll(indexes, i -> i);
+            Maths.shuffle(indexes);
             for (int i = 0; i < hashNum; i++) {
-                res[i] = int2intHashes[idxes.get(i)].clone();
+                res[i] = int2intHashes[indexes[i]].clone();
                 res[i].setSize(size);
             }
             return res;

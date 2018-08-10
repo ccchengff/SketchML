@@ -2,7 +2,8 @@ package org.dma.sketchml.ml.conf
 
 import org.apache.spark.SparkConf
 import org.dma.sketchml.ml.common.Constants._
-import org.dma.sketchml.sketch.base.SketchMLException
+import org.dma.sketchml.sketch.base.{Quantizer, SketchMLException}
+import org.dma.sketchml.sketch.sketch.frequency.{GroupedMinMaxSketch, MinMaxSketch}
 
 object MLConf {
   // ML Conf
@@ -32,13 +33,13 @@ object MLConf {
   val SKETCH_GRADIENT_COMPRESSOR: String = "spark.sketchml.gradient.compressor"
   val DEFAULT_SKETCH_GRADIENT_COMPRESSOR: String = GRADIENT_COMPRESSOR_SKETCH
   val SKETCH_QUANTIZATION_BIN_NUM: String = "spark.sketchml.quantization.bin.num"
-  val DEFAULT_SKETCH_QUANTIZATION_BIN_NUM: Int = 256
+  val DEFAULT_SKETCH_QUANTIZATION_BIN_NUM: Int = Quantizer.DEFAULT_BIN_NUM
   val SKETCH_MINMAXSKETCH_GROUP_NUM: String = "spark.sketchml.minmaxsketch.group.num"
-  val DEFAULT_SKETCH_MINMAXSKETCH_GROUP_NUM: Int = 8
+  val DEFAULT_SKETCH_MINMAXSKETCH_GROUP_NUM: Int = GroupedMinMaxSketch.DEFAULT_MINMAXSKETCH_GROUP_NUM
   val SKETCH_MINMAXSKETCH_ROW_NUM: String = "spark.sketchml.minmaxsketch.row.num"
-  val DEFAULT_SKETCH_MINMAXSKETCH_ROW_NUM: Int = 2
+  val DEFAULT_SKETCH_MINMAXSKETCH_ROW_NUM: Int = MinMaxSketch.DEFAULT_MINMAXSKETCH_ROW_NUM
   val SKETCH_MINMAXSKETCH_COL_RATIO: String = "spark.sketchml.minmaxsketch.col.ratio"
-  val DEFAULT_SKETCH_MINMAXSKETCH_COL_RATIO: Double = 0.2
+  val DEFAULT_SKETCH_MINMAXSKETCH_COL_RATIO: Double = GroupedMinMaxSketch.DEFAULT_MINMAXSKETCH_COL_RATIO
 
   def apply(sparkConf: SparkConf): MLConf = MLConf(
     sparkConf.get(ML_ALGORITHM),

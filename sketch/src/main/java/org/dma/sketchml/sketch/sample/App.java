@@ -3,12 +3,14 @@ package org.dma.sketchml.sketch.sample;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import org.apache.commons.lang3.tuple.Pair;
-import org.dma.sketchml.sketch.util.Sort;
 import org.dma.sketchml.sketch.base.QuantileSketch;
 import org.dma.sketchml.sketch.base.Quantizer;
 import org.dma.sketchml.sketch.base.VectorCompressor;
 import org.dma.sketchml.sketch.common.Constants;
+import org.dma.sketchml.sketch.sketch.frequency.GroupedMinMaxSketch;
+import org.dma.sketchml.sketch.sketch.frequency.MinMaxSketch;
 import org.dma.sketchml.sketch.sketch.quantile.HeapQuantileSketch;
+import org.dma.sketchml.sketch.util.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,10 +39,11 @@ public class App {
             }
         }
         Quantizer.QuantizationType quantType = Quantizer.QuantizationType.QUANTILE;
-        int binNum = 256;
+        int binNum = Quantizer.DEFAULT_BIN_NUM;
         VectorCompressor compressor = new DenseVectorCompressor(quantType, binNum);
         //compressor.compressDense(values);
         compressor.parallelCompressDense(values);
+        compressor = (VectorCompressor) Utils.testSerialization(compressor);
         double[] dValues = compressor.decompressDense();
         LOG.info("First 10 values before: " + Arrays.toString(Arrays.copyOf(values, 10)));
         LOG.info("First 10 values after:  " + Arrays.toString(Arrays.copyOf(dValues, 10)));
@@ -75,12 +78,13 @@ public class App {
         int[] keys = keyList.toIntArray();
         double[] values = valueList.toDoubleArray();
         Quantizer.QuantizationType quantType = Quantizer.QuantizationType.QUANTILE;
-        int binNum = 256;
-        int groupNum = 8;
-        int rowNum = 2;
-        double colRatio = 0.5;
+        int binNum = Quantizer.DEFAULT_BIN_NUM;
+        int groupNum = GroupedMinMaxSketch.DEFAULT_MINMAXSKETCH_GROUP_NUM;
+        int rowNum = MinMaxSketch.DEFAULT_MINMAXSKETCH_ROW_NUM;
+        double colRatio = GroupedMinMaxSketch.DEFAULT_MINMAXSKETCH_COL_RATIO;
         VectorCompressor compressor = new SparseVectorCompressor(
                 quantType, binNum, groupNum, rowNum, colRatio);
+        compressor = (VectorCompressor) Utils.testSerialization(compressor);
         //compressor.compressSparse(keys, values);
         compressor.parallelCompressSparse(keys, values);
         Pair<int[], double[]> dResult = compressor.decompressSparse();

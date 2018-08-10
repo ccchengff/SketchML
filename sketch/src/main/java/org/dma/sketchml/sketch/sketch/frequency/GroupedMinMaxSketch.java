@@ -6,12 +6,16 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.dma.sketchml.sketch.base.BinaryEncoder;
 import org.dma.sketchml.sketch.binary.DeltaBinaryEncoder;
 import org.dma.sketchml.sketch.common.Constants;
-import org.dma.sketchml.sketch.util.Maths;
 import org.dma.sketchml.sketch.util.Sort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -28,12 +32,20 @@ public class GroupedMinMaxSketch implements Serializable {
     private MinMaxSketch[] sketches;
     private BinaryEncoder[] encoders;
 
+    public static final int DEFAULT_MINMAXSKETCH_GROUP_NUM = 8;
+    public static final double DEFAULT_MINMAXSKETCH_COL_RATIO = 0.3;
+
     public GroupedMinMaxSketch(int groupNum, int rowNum, double colRatio, int binNum, int zeroValue) {
         this.groupNum = groupNum;
         this.rowNum = rowNum;
         this.colRatio = colRatio;
         this.binNum = binNum;
         this.zeroValue = zeroValue;
+    }
+
+    public GroupedMinMaxSketch(int binNum, int zeroValue) {
+        this(DEFAULT_MINMAXSKETCH_GROUP_NUM, MinMaxSketch.DEFAULT_MINMAXSKETCH_ROW_NUM,
+                DEFAULT_MINMAXSKETCH_COL_RATIO, binNum, zeroValue);
     }
 
     public void create(int[] keys, int[] bins) {
@@ -90,12 +102,15 @@ public class GroupedMinMaxSketch implements Serializable {
 
     private Pair<MinMaxSketch, BinaryEncoder> compOneGroup(IntArrayList keyList, IntArrayList binList,
                                                            int[] groupEdges, int groupId) {
-        // encode bins
         int groupSize = keyList.size();
+        if (groupSize == 0) {
+            LOG.warn(String.format("Group[%d] is empty, group edges: [%d, %d)", groupId,
+                    groupId == 0 ? 0 : groupEdges[groupId - 1], groupEdges[groupId]));
+            return new ImmutablePair<>(null, null);
+        }
+        // encode bins
         int colNum = (int) Math.ceil(groupSize * colRatio);
-        int partBinNum = groupEdges[groupId] - (groupId == 0 ? 0 : groupEdges[groupId - 1]);
-        int bitsPerCell = Maths.log2nlz(partBinNum);
-        MinMaxSketch sketch = new MinMaxSketch(rowNum, colNum, bitsPerCell, zeroValue);
+        MinMaxSketch sketch = new MinMaxSketch(rowNum, colNum, zeroValue);
         for (int j = 0; j < groupSize; j++) {
             sketch.insert(keyList.getInt(j), binList.getInt(j));
         }
@@ -108,29 +123,52 @@ public class GroupedMinMaxSketch implements Serializable {
     public Pair<int[], int[]> restore() {
         int size = 0;
         // decode each group
-        int[][] groupKeys = new int[groupNum][];
-        int[][] groupBins = new int[groupNum][];
+        // in case there are empty groups
+        List<int[]> keysToMerge = new ArrayList<>(groupNum);
+        List<int[]> binsToMerge = new ArrayList<>(groupNum);
         for (int i = 0; i < groupNum; i++) {
-            groupKeys[i] = encoders[i].decode();
-            groupBins[i] = new int[groupKeys[i].length];
-            for (int j = 0; j < groupKeys[i].length; j++)
-                groupBins[i][j] = sketches[i].query(groupKeys[i][j]);
-            size += groupKeys[i].length;
+            if (encoders[i] != null && sketches[i] != null) {
+                int[] groupKeys = encoders[i].decode();
+                int[] groupBins = new int[groupKeys.length];
+                for (int j = 0; j < groupKeys.length; j++)
+                    groupBins[j] = sketches[i].query(groupKeys[j]);
+                keysToMerge.add(groupKeys);
+                binsToMerge.add(groupBins);
+                size += groupKeys.length;
+            }
         }
         // merge
         int[] keys = new int[size];
         int[] bins = new int[size];
-        Sort.merge(groupKeys, groupBins, keys, bins);
+        Sort.merge(keysToMerge.toArray(new int[keysToMerge.size()][]),
+                binsToMerge.toArray(new int[binsToMerge.size()][]), keys, bins);
         return new ImmutablePair<>(keys, bins);
     }
 
-    public int memoryBytes() {
-        int res = 24;
-        if (sketches != null) {
-            for (int i = 0; i < groupNum; i++)
-                res += sketches[i].memoryBytes() + encoders[i].memoryBytes();
-        }
-        return res;
+    private void writeObject(ObjectOutputStream oos) throws IOException {
+        oos.writeInt(groupNum);
+        oos.writeInt(rowNum);
+        oos.writeDouble(colRatio);
+        oos.writeInt(binNum);
+        oos.writeInt(zeroValue);
+        for (MinMaxSketch sketch : sketches)
+            oos.writeObject(sketch);
+        for (BinaryEncoder encoder : encoders)
+            oos.writeObject(encoder);
+    }
+
+    private void readObject(ObjectInputStream ois) throws ClassNotFoundException, IOException {
+        groupNum = ois.readInt();
+        rowNum = ois.readInt();
+        colRatio = ois.readDouble();
+        binNum = ois.readInt();
+        zeroValue = ois.readInt();
+        sketches = new MinMaxSketch[groupNum];
+        for (int i = 0; i < groupNum; i++)
+            sketches[i] = (MinMaxSketch) ois.readObject();
+        encoders = new BinaryEncoder[groupNum];
+        for (int i = 0; i < groupNum; i++)
+            encoders[i] = (BinaryEncoder) ois.readObject();
     }
 
 }

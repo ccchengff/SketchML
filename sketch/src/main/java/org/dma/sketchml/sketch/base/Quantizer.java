@@ -1,7 +1,14 @@
 package org.dma.sketchml.sketch.base;
 
 import org.dma.sketchml.sketch.common.Constants;
+import org.dma.sketchml.sketch.quantization.QuantileQuantizer;
+import org.dma.sketchml.sketch.quantization.UniformQuantizer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -9,6 +16,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
 public abstract class Quantizer implements Serializable {
+    public static Logger LOG = LoggerFactory.getLogger(Quantizer.class);
+
     protected int binNum;
     protected int n;
     protected double[] splits;
@@ -114,6 +123,18 @@ public abstract class Quantizer implements Serializable {
             splits[i] *= x;
     }
 
+    public static Quantizer newQuantizer(Quantizer.QuantizationType type, int binNum) {
+        switch (type) {
+            case QUANTILE:
+                return new QuantileQuantizer(binNum);
+            case UNIFORM:
+                return new UniformQuantizer(binNum);
+            default:
+                throw new SketchMLException(
+                        "Unrecognizable quantization type: " + type);
+        }
+    }
+
     public enum QuantizationType {
         UNIFORM("UNIFORM"),
         QUANTILE("QUANTILE");
@@ -160,8 +181,48 @@ public abstract class Quantizer implements Serializable {
         return min;
     }
 
-    public int memoryBytes() {
-        int memPerBin = binNum <= 256 ? 1 : binNum <= 65536 ? 2 : 4;
-        return 28 + splits.length * 8 + bins.length * memPerBin;
+    private void writeObject(ObjectOutputStream oos) throws IOException {
+        oos.writeInt(binNum);
+        oos.writeInt(n);
+        for (double split : splits)
+            oos.writeDouble(split);
+        oos.writeInt(zeroIdx);
+        oos.writeDouble(min);
+        oos.writeDouble(max);
+        oos.writeInt(bins.length);
+        if (binNum <= 256) {
+            for (int bin : bins)
+                oos.writeByte(bin + Byte.MIN_VALUE);
+        } else if (binNum <= 65536) {
+            for (int bin : bins)
+                oos.writeShort(bin + Short.MIN_VALUE);
+        } else {
+            for (int bin : bins)
+                oos.writeInt(bin);
+        }
     }
+
+    private void readObject(ObjectInputStream ois) throws ClassNotFoundException, IOException {
+        binNum = ois.readInt();
+        n = ois.readInt();
+        int splitNum = binNum - 1;
+        splits = new double[splitNum];
+        for (int i = 0; i < splitNum; i++)
+            splits[i] = ois.readDouble();
+        zeroIdx = ois.readInt();
+        min = ois.readDouble();
+        max = ois.readDouble();
+        bins = new int[ois.readInt()];
+        if (binNum <= 256) {
+            for (int i = 0; i < bins.length; i++)
+                bins[i] = ((int) ois.readByte()) - Byte.MIN_VALUE;
+        } else if (binNum <= 65536) {
+            for (int i = 0; i < bins.length; i++)
+                bins[i] = ((int) ois.readShort()) - Short.MIN_VALUE;
+        } else {
+            for (int i = 0; i < bins.length; i++)
+                bins[i] = ois.readInt();
+        }
+    }
+
 }
