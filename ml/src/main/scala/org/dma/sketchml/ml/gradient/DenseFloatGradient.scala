@@ -60,6 +60,8 @@ class DenseFloatGradient(d: Int, val values: Array[Float]) extends Gradient(d) {
 
   override def plusBy(sketchGrad: SketchGradient): Gradient = plusBy(sketchGrad.toAuto)
 
+  override def plusBy(fpGrad: FixedPointGradient): Gradient = plusBy(fpGrad.toAuto)
+
   override def plusBy(dense: DenseVector, x: Double): Gradient = {
     val v = dense.values
     val x_ = x.toFloat

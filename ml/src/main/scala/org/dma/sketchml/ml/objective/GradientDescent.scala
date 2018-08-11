@@ -87,6 +87,7 @@ class GradientDescent(dim: Int, lr_0: Double, decay: Double, batchSpRatio: Doubl
   }
 
   def update(grad: Gradient, weight: DenseVector): Unit = {
+    val startTime = System.currentTimeMillis()
     val lr = lr_0 / Math.sqrt(1.0 + decay * epoch)
     grad match {
       case dense: DenseDoubleGradient => update(dense, weight, lr)
@@ -94,7 +95,9 @@ class GradientDescent(dim: Int, lr_0: Double, decay: Double, batchSpRatio: Doubl
       case dense: DenseFloatGradient => update(dense, weight, lr)
       case sparse: SparseFloatGradient => update(sparse, weight, lr)
       case sketchGrad: SketchGradient => update(sketchGrad.toAuto, weight)
+      case fpGrad: FixedPointGradient => update(fpGrad.toAuto, weight)
     }
+    logger.info(s"Update weight cost ${System.currentTimeMillis() - startTime} ms")
   }
 
   private def update(grad: DenseDoubleGradient, weight: DenseVector, lr: Double): Unit = {

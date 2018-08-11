@@ -25,6 +25,7 @@ class Adam(dim: Int, lr_0: Double, decay: Double, batchSpRatio: Double)
   val v = new Array[Double](dim)
 
   override def update(grad: Gradient, weight: DenseVector): Unit = {
+    val startTime = System.currentTimeMillis()
     if (epoch > 0 && batch == 0) {
       beta1_t *= beta1
       beta2_t *= beta2
@@ -36,8 +37,10 @@ class Adam(dim: Int, lr_0: Double, decay: Double, batchSpRatio: Double)
       case dense: DenseFloatGradient => update(dense, weight, lr_0)
       case sparse: SparseFloatGradient => update(sparse, weight, lr_0)
       case sketchGrad: SketchGradient => update(sketchGrad.toAuto, weight)
+      case fpGrad: FixedPointGradient => update(fpGrad.toAuto, weight)
       case _ => throw new ClassNotFoundException(grad.getClass.getName)
     }
+    logger.info(s"Update weight cost ${System.currentTimeMillis() - startTime} ms")
   }
 
   private def update(grad: DenseDoubleGradient, weight: DenseVector, lr: Double): Unit = {

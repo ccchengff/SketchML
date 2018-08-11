@@ -10,5 +10,6 @@ object Constants {
   val GRADIENT_COMPRESSOR_NONE: String = "None"
   val GRADIENT_COMPRESSOR_FLOAT: String = "Float"
   val GRADIENT_COMPRESSOR_SKETCH: String = "Sketch"
+  val GRADIENT_COMPRESSOR_FIXED_POINT: String = "FixedPoint"
 
 }

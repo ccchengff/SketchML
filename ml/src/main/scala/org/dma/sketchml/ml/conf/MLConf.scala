@@ -40,6 +40,9 @@ object MLConf {
   val DEFAULT_SKETCH_MINMAXSKETCH_ROW_NUM: Int = MinMaxSketch.DEFAULT_MINMAXSKETCH_ROW_NUM
   val SKETCH_MINMAXSKETCH_COL_RATIO: String = "spark.sketchml.minmaxsketch.col.ratio"
   val DEFAULT_SKETCH_MINMAXSKETCH_COL_RATIO: Double = GroupedMinMaxSketch.DEFAULT_MINMAXSKETCH_COL_RATIO
+  // FixedPoint Conf
+  val FIXED_POINT_BIT_NUM: String = "spark.sketchml.fixed.point.bit.num"
+  val DEFAULT_FIXED_POINT_BIT_NUM = 8
 
   def apply(sparkConf: SparkConf): MLConf = MLConf(
     sparkConf.get(ML_ALGORITHM),
@@ -58,7 +61,8 @@ object MLConf {
     sparkConf.getInt(SKETCH_QUANTIZATION_BIN_NUM, DEFAULT_SKETCH_QUANTIZATION_BIN_NUM),
     sparkConf.getInt(SKETCH_MINMAXSKETCH_GROUP_NUM, DEFAULT_SKETCH_MINMAXSKETCH_GROUP_NUM),
     sparkConf.getInt(SKETCH_MINMAXSKETCH_ROW_NUM, DEFAULT_SKETCH_MINMAXSKETCH_ROW_NUM),
-    sparkConf.getDouble(SKETCH_MINMAXSKETCH_COL_RATIO, DEFAULT_SKETCH_MINMAXSKETCH_COL_RATIO)
+    sparkConf.getDouble(SKETCH_MINMAXSKETCH_COL_RATIO, DEFAULT_SKETCH_MINMAXSKETCH_COL_RATIO),
+    sparkConf.getInt(FIXED_POINT_BIT_NUM, DEFAULT_FIXED_POINT_BIT_NUM)
   )
 
 }
@@ -67,12 +71,13 @@ case class MLConf(algo: String, input: String, format: String, workerNum: Int,
                   featureNum: Int, validRatio: Double, epochNum: Int,batchSpRatio: Double,
                   learnRate: Double, learnDecay: Double, l1Reg: Double, l2Reg: Double,
                   compressor: String, quantBinNum: Int, sketchGroupNum: Int,
-                  sketchRowNum: Int, sketchColRatio: Double) {
+                  sketchRowNum: Int, sketchColRatio: Double, fixedPointBitNum: Int) {
   require(Seq(ML_LOGISTIC_REGRESSION, ML_SUPPORT_VECTOR_MACHINE, ML_LINEAR_REGRESSION).contains(algo),
     throw new SketchMLException(s"Unsupported algorithm: $algo"))
   require(Seq(FORMAT_LIBSVM, FORMAT_CSV, FORMAT_DUMMY).contains(format),
     throw new SketchMLException(s"Unrecognizable file format: $format"))
-  require(Seq(GRADIENT_COMPRESSOR_SKETCH, GRADIENT_COMPRESSOR_FLOAT, GRADIENT_COMPRESSOR_NONE).contains(compressor),
+  require(Seq(GRADIENT_COMPRESSOR_SKETCH, GRADIENT_COMPRESSOR_FIXED_POINT,
+    GRADIENT_COMPRESSOR_FLOAT, GRADIENT_COMPRESSOR_NONE).contains(compressor),
     throw new SketchMLException(s"Unrecognizable gradient compressor: $compressor"))
 
 }
