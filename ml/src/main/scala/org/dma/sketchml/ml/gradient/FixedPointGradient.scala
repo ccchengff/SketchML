@@ -74,7 +74,7 @@ class FixedPointGradient(d: Int, val numBits: Int) extends Gradient(d) {
     values
   }
 
-  override def toAuto: Gradient = if (indices == null) toDense else toSparse
+  override def toAuto: Gradient = (if (indices == null) toDense else toSparse).toAuto
 
   override def kind: Kind = Kind.FixedPoint
 }

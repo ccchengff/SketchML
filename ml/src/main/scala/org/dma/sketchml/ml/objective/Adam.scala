@@ -38,6 +38,7 @@ class Adam(dim: Int, lr_0: Double, decay: Double, batchSpRatio: Double)
       case sparse: SparseFloatGradient => update(sparse, weight, lr_0)
       case sketchGrad: SketchGradient => update(sketchGrad.toAuto, weight)
       case fpGrad: FixedPointGradient => update(fpGrad.toAuto, weight)
+      case zipGrad: ZipGradient => update(zipGrad.toAuto, weight)
       case _ => throw new ClassNotFoundException(grad.getClass.getName)
     }
     logger.info(s"Update weight cost ${System.currentTimeMillis() - startTime} ms")

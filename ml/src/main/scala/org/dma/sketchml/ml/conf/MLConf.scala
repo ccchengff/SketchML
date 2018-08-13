@@ -76,7 +76,7 @@ case class MLConf(algo: String, input: String, format: String, workerNum: Int,
     throw new SketchMLException(s"Unsupported algorithm: $algo"))
   require(Seq(FORMAT_LIBSVM, FORMAT_CSV, FORMAT_DUMMY).contains(format),
     throw new SketchMLException(s"Unrecognizable file format: $format"))
-  require(Seq(GRADIENT_COMPRESSOR_SKETCH, GRADIENT_COMPRESSOR_FIXED_POINT,
+  require(Seq(GRADIENT_COMPRESSOR_SKETCH, GRADIENT_COMPRESSOR_FIXED_POINT, GRADIENT_COMPRESSOR_ZIP,
     GRADIENT_COMPRESSOR_FLOAT, GRADIENT_COMPRESSOR_NONE).contains(compressor),
     throw new SketchMLException(s"Unrecognizable gradient compressor: $compressor"))
 

@@ -96,6 +96,7 @@ class GradientDescent(dim: Int, lr_0: Double, decay: Double, batchSpRatio: Doubl
       case sparse: SparseFloatGradient => update(sparse, weight, lr)
       case sketchGrad: SketchGradient => update(sketchGrad.toAuto, weight)
       case fpGrad: FixedPointGradient => update(fpGrad.toAuto, weight)
+      case zipGrad: ZipGradient => update(zipGrad.toAuto, weight)
     }
     logger.info(s"Update weight cost ${System.currentTimeMillis() - startTime} ms")
   }

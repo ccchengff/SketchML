@@ -23,6 +23,8 @@ object Gradient {
           conf.sketchRowNum, conf.sketchColRatio)
       case Constants.GRADIENT_COMPRESSOR_FIXED_POINT =>
         new FixedPointGradient(grad, conf.fixedPointBitNum)
+      case Constants.GRADIENT_COMPRESSOR_ZIP =>
+        new ZipGradient(grad, conf.quantBinNum)
       case Constants.GRADIENT_COMPRESSOR_FLOAT =>
         grad.kind match {
           case Kind.DenseDouble => new DenseFloatGradient(grad)
@@ -79,6 +81,7 @@ abstract class Gradient(val dim: Int) extends Serializable {
         case Kind.SparseFloat => plusBy(o.asInstanceOf[SparseFloatGradient])
         case Kind.Sketch => plusBy(o.asInstanceOf[SketchGradient])
         case Kind.FixedPoint => plusBy(o.asInstanceOf[FixedPointGradient])
+        case Kind.Zip => plusBy(o.asInstanceOf[ZipGradient])
         case _ => throw new ClassNotFoundException(o.getClass.getName)
       }
     }
@@ -101,6 +104,9 @@ abstract class Gradient(val dim: Int) extends Serializable {
 
   def plusBy(fpGrad: FixedPointGradient): Gradient = throw new
       UnsupportedOperationException(s"Cannot to add ${fpGrad.kind} to ${this.kind}")
+
+  def plusBy(zipGrad: ZipGradient): Gradient = throw new
+      UnsupportedOperationException(s"Cannot to add ${zipGrad.kind} to ${this.kind}")
 
   def plusBy(v: Vector, x: Double): Gradient = {
     v match {
@@ -167,6 +173,8 @@ class ZeroGradient private extends Gradient(1) {
   override def plusBy(sketchGrad: SketchGradient): Gradient = sketchGrad
 
   override def plusBy(fpGrad: FixedPointGradient): Gradient = fpGrad
+
+  override def plusBy(zipGrad: ZipGradient): Gradient = zipGrad
 
 }
 
