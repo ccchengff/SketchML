@@ -121,9 +121,6 @@ public class HuffmanEncoder implements BinaryEncoder {
     }
 
     @Override
-    public void encode(IntStream stream) {}
-
-    @Override
     public int[] decode() {
         if (size == 0)
             return new int[0];

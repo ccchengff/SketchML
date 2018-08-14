@@ -4,7 +4,7 @@ import it.unimi.dsi.fastutil.ints.IntArrayList;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.dma.sketchml.sketch.base.BinaryEncoder;
-import org.dma.sketchml.sketch.binary.DeltaBinaryEncoder;
+import org.dma.sketchml.sketch.binary.DeltaAdaptiveEncoder;
 import org.dma.sketchml.sketch.common.Constants;
 import org.dma.sketchml.sketch.util.Sort;
 import org.slf4j.Logger;
@@ -115,7 +115,7 @@ public class GroupedMinMaxSketch implements Serializable {
             sketch.insert(keyList.getInt(j), binList.getInt(j));
         }
         // encode keys
-        BinaryEncoder encoder = new DeltaBinaryEncoder();
+        BinaryEncoder encoder = new DeltaAdaptiveEncoder();
         encoder.encode(keyList.toIntArray(null));
         return new ImmutablePair<>(sketch, encoder);
     }

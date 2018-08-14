@@ -8,16 +8,19 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.Serializable;
 import java.util.BitSet;
-import java.util.stream.IntStream;
 
-public class DeltaBinaryEncoder implements BinaryEncoder, Serializable {
+/**
+ * This is the special case for DeltaAdaptiveEncoder
+ * where numIntervals equals to 4 and number of flag bits is constant
+ *
+ * */
+public class DeltaBinaryEncoder implements BinaryEncoder {
     private static final Logger LOG = LoggerFactory.getLogger(DeltaBinaryEncoder.class);
 
+    private int size;
     private BitSet deltaBits;
     private BitSet flagBits;
-    private int size;
 
     @Override
     public void encode(int[] values) {
@@ -33,10 +36,7 @@ public class DeltaBinaryEncoder implements BinaryEncoder, Serializable {
             prev = values[i];
             offset += bytesNeeded * 8;
         }
-    }
-
-    @Override
-    public void encode(IntStream stream) {
+        //LOG.info(String.format("BitsPerKey[%f]", offset * 1. / size + 2));
     }
 
     @Override
@@ -51,10 +51,6 @@ public class DeltaBinaryEncoder implements BinaryEncoder, Serializable {
             offset += bytesNeeded * 8;
         }
         return res;
-    }
-
-    public IntStream decodeAsStream() {
-        return null;
     }
 
     public static int needBytes(int x) {
