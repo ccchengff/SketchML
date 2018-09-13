@@ -63,7 +63,7 @@ public class SparseVectorCompressor implements VectorCompressor {
         quantValues = quantizer.getValues();
         // 2. encode bins and keys
         mmSketches = new GroupedMinMaxSketch(mmSketchGroupNum, mmSketchRowNum,
-                mmSketchColRatio, quantBinNum, quantizer.getZeroIdx());
+                mmSketchColRatio, quantizer.getBinNum(), quantizer.getZeroIdx());
         mmSketches.create(keys, quantizer.getBins());
         LOG.debug(String.format("Sparse vector compression cost %d ms, %d key-value " +
                 "pairs in total", System.currentTimeMillis() - startTime, size));
@@ -92,7 +92,7 @@ public class SparseVectorCompressor implements VectorCompressor {
         quantValues = quantizer.getValues();
         // 2. encode bins and keys
         mmSketches = new GroupedMinMaxSketch(mmSketchGroupNum, mmSketchRowNum,
-                mmSketchColRatio, quantBinNum, quantizer.getZeroIdx());
+                mmSketchColRatio, quantizer.getBinNum(), quantizer.getZeroIdx());
         mmSketches.parallelCreate(keys, quantizer.getBins());
         LOG.debug(String.format("Sparse vector parallel compression cost %d ms, %d key-value " +
                 "pairs in total", System.currentTimeMillis() - startTime, size));

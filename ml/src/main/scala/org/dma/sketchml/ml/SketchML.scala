@@ -7,24 +7,18 @@ import org.dma.sketchml.ml.conf.MLConf
 
 object SketchML {
   def main(args: Array[String]): Unit = {
-    try {
-      val sparkConf = new SparkConf().setAppName("SketchML")
-      implicit val sc = SparkContext.getOrCreate(sparkConf)
-      val mlConf = MLConf(sparkConf)
-      val model = mlConf.algo match {
-        case Constants.ML_LOGISTIC_REGRESSION => LRModel(mlConf)
-        case Constants.ML_SUPPORT_VECTOR_MACHINE => SVMModel(mlConf)
-        case Constants.ML_LINEAR_REGRESSION => LinearRegModel(mlConf)
-        case _ => throw new UnknownError("Unsupported algorithm: " + mlConf.algo)
-      }
-
-      model.loadData()
-      model.train()
-    } catch {
-      case e: Exception => e.printStackTrace()
-    } finally {
-      while (1 + 1 == 2) {}
+    val sparkConf = new SparkConf().setAppName("SketchML")
+    implicit val sc = SparkContext.getOrCreate(sparkConf)
+    val mlConf = MLConf(sparkConf)
+    val model = mlConf.algo match {
+      case Constants.ML_LOGISTIC_REGRESSION => LRModel(mlConf)
+      case Constants.ML_SUPPORT_VECTOR_MACHINE => SVMModel(mlConf)
+      case Constants.ML_LINEAR_REGRESSION => LinearRegModel(mlConf)
+      case _ => throw new UnknownError("Unsupported algorithm: " + mlConf.algo)
     }
+
+    model.loadData()
+    model.train()
 
     // TODO: test data
   }

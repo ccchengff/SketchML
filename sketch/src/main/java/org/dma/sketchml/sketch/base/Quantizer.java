@@ -49,7 +49,7 @@ public abstract class Quantizer implements Serializable {
     public int indexOf(double x) {
         if (x < splits[0]) {
             return 0;
-        } else if (x > splits[binNum - 2]) {
+        } else if (x >= splits[binNum - 2]) {
             return binNum - 1;
         } else {
             int l = zeroIdx, r = zeroIdx;
@@ -59,7 +59,7 @@ public abstract class Quantizer implements Serializable {
                 int mid = (l + r) >> 1;
                 if (splits[mid] > x) {
                     if (mid == 0 || splits[mid - 1] <= x)
-                        return mid + 1;
+                        return mid;
                     else
                         r = mid;
                 } else {

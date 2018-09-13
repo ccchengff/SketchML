@@ -258,9 +258,9 @@ public class HeapQuantileSketch extends QuantileSketch {
         if (samplesArr.length == 0)
             return Double.NaN;
 
-        if (fraction == 0.0f)
+        if (fraction == 0.0)
             return minValue;
-        else if (fraction == 1.0f)
+        else if (fraction == 1.0)
             return maxValue;
         else
             return getQuantileFromArr(fraction);
@@ -279,9 +279,9 @@ public class HeapQuantileSketch extends QuantileSketch {
         }
 
         for (int i = 0; i < fractions.length; i++) {
-            if (fractions[i] == 0.0f)
+            if (fractions[i] == 0.0)
                 res[i] = minValue;
-            else if (fractions[i] == 1.0f)
+            else if (fractions[i] == 1.0)
                 res[i] = maxValue;
             else
                 res[i] = getQuantileFromArr(fractions[i]);
@@ -302,8 +302,8 @@ public class HeapQuantileSketch extends QuantileSketch {
         }
 
         int index = 0;
-        double curFrac = 1.0f / evenPartition;
-        double step = 1.0f / evenPartition;
+        double curFrac = 1.0 / evenPartition;
+        double step = 1.0 / evenPartition;
         for (int i = 0; i + 1 < evenPartition; i++) {
             long rank = (long)(n * curFrac);
             rank = Math.min(rank, n - 1);

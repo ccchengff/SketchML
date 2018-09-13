@@ -3,6 +3,7 @@ package org.dma.sketchml.sketch.quantization;
 import org.dma.sketchml.sketch.base.Quantizer;
 import org.dma.sketchml.sketch.common.Constants;
 import org.dma.sketchml.sketch.sketch.quantile.HeapQuantileSketch;
+import org.dma.sketchml.sketch.util.Maths;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,7 +35,12 @@ public class QuantileQuantizer extends Quantizer {
         min = qSketch.getMinValue();
         max = qSketch.getMaxValue();
         // 2. query quantiles, set them as bin edges
-        splits = qSketch.getQuantiles(binNum);
+        splits = Maths.unique(qSketch.getQuantiles(binNum));
+        if (splits.length + 1 != binNum) {
+            LOG.warn(String.format("Actual bin num %d not equal to %d",
+                    splits.length + 1, binNum));
+            binNum = splits.length + 1;
+        }
         // 3. find the zero index
         findZeroIdx();
         // 4. find index of each value

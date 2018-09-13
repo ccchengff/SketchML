@@ -86,6 +86,7 @@ public class HuffmanEncoder implements BinaryEncoder {
 
     @Override
     public void encode(int[] values) {
+        long startTime = System.currentTimeMillis();
         // 1. count occurrences
         Int2ObjectRBTreeMap<Node> freq = new Int2ObjectRBTreeMap<>();
         for (int v : values) {
@@ -118,6 +119,8 @@ public class HuffmanEncoder implements BinaryEncoder {
             offset += item.numBits;
         }
         size = values.length;
+        LOG.debug(String.format("Huffman encoding for %d values cost %d ms",
+                values.length, System.currentTimeMillis() - startTime));
     }
 
     @Override

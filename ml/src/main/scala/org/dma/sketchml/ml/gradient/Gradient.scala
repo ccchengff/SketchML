@@ -49,6 +49,8 @@ object Gradient {
   }
 
   def evaluateCompression(origin: Gradient, comp: Gradient): Unit = {
+    logger.info(s"Evaluating compression from ${origin.kind} to ${comp.kind}, " +
+      s"sparsity[${origin.countNNZ.toDouble / origin.dim}]")
     // distances
     val (vOrig, vComp) = origin.kind match {
       case Kind.DenseDouble => (origin.asInstanceOf[DenseDoubleGradient].values, comp.toDense.values)

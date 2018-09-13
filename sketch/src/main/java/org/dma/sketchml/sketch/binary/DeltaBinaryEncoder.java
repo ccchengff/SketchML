@@ -36,7 +36,6 @@ public class DeltaBinaryEncoder implements BinaryEncoder {
             prev = values[i];
             offset += bytesNeeded * 8;
         }
-        //LOG.info(String.format("BitsPerKey[%f]", offset * 1. / size + 2));
     }
 
     @Override

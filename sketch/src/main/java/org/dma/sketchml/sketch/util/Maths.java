@@ -47,4 +47,22 @@ public class Maths {
             array[i] = t;
         }
     }
+
+    public static double[] unique(double[] sorted) {
+        int size = sorted.length, cnt = 1;
+        for (int i = 1; i < size; i++)
+            if (sorted[i] != sorted[i - 1])
+                cnt++;
+        if (cnt != size) {
+            double[] res = new double[cnt];
+            res[0] = sorted[0];
+            int index = 1;
+            for (int i = 1; i < size; i++)
+                if (sorted[i] != sorted[i - 1])
+                    res[index++] = sorted[i];
+            return res;
+        } else {
+            return sorted;
+        }
+    }
 }
