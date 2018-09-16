@@ -30,18 +30,21 @@ class Adam(dim: Int, lr_0: Double, decay: Double, batchSpRatio: Double)
       beta1_t *= beta1
       beta2_t *= beta2
     }
+    update0(grad, weight)
+    logger.info(s"Update weight cost ${System.currentTimeMillis() - startTime} ms")
+  }
 
+  private def update0(grad: Gradient, weight: DenseVector): Unit = {
     grad match {
       case dense: DenseDoubleGradient => update(dense, weight, lr_0)
       case sparse: SparseDoubleGradient => update(sparse, weight, lr_0)
       case dense: DenseFloatGradient => update(dense, weight, lr_0)
       case sparse: SparseFloatGradient => update(sparse, weight, lr_0)
-      case sketchGrad: SketchGradient => update(sketchGrad.toAuto, weight)
-      case fpGrad: FixedPointGradient => update(fpGrad.toAuto, weight)
-      case zipGrad: ZipGradient => update(zipGrad.toAuto, weight)
+      case sketchGrad: SketchGradient => update0(sketchGrad.toAuto, weight)
+      case fpGrad: FixedPointGradient => update0(fpGrad.toAuto, weight)
+      case zipGrad: ZipGradient => update0(zipGrad.toAuto, weight)
       case _ => throw new ClassNotFoundException(grad.getClass.getName)
     }
-    logger.info(s"Update weight cost ${System.currentTimeMillis() - startTime} ms")
   }
 
   private def update(grad: DenseDoubleGradient, weight: DenseVector, lr: Double): Unit = {
