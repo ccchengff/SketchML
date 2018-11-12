@@ -10,19 +10,26 @@ public class BKDRHash extends Int2IntHash {
         this.seed = seed;
     }
 
-    public int hash(int key) {
+    protected int doHash(int key) {
         int code = 0;
         while (key != 0) {
             code = seed * code + (key % 10);
             key /= 10;
         }
-        code %= size;
-        return code >= 0 ? code : code + size;
+        return code;
     }
 
     @Override
     public Int2IntHash clone() {
-        return new BKDRHash(size, seed);
+        BKDRHash copy = new BKDRHash(size, seed);
+        copy.buffer = this.buffer;
+        return copy;
+    }
+
+    @Override
+    public boolean equalsIgnoreSize(Int2IntHash other) {
+        return other instanceof BKDRHash
+                && ((BKDRHash) other).getSeed() == seed;
     }
 
     public int getSeed() {

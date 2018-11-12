@@ -64,7 +64,7 @@ public class SparseVectorCompressor implements VectorCompressor {
         // 2. encode bins and keys
         mmSketches = new GroupedMinMaxSketch(mmSketchGroupNum, mmSketchRowNum,
                 mmSketchColRatio, quantizer.getBinNum(), quantizer.getZeroIdx());
-        mmSketches.create(keys, quantizer.getBins());
+        mmSketches.create(keys, quantizer);
         LOG.debug(String.format("Sparse vector compression cost %d ms, %d key-value " +
                 "pairs in total", System.currentTimeMillis() - startTime, size));
     }

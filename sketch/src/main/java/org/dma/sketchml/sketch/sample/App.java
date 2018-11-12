@@ -7,6 +7,7 @@ import org.dma.sketchml.sketch.base.QuantileSketch;
 import org.dma.sketchml.sketch.base.Quantizer;
 import org.dma.sketchml.sketch.base.VectorCompressor;
 import org.dma.sketchml.sketch.common.Constants;
+import org.dma.sketchml.sketch.hash.HashFactory;
 import org.dma.sketchml.sketch.sketch.frequency.GroupedMinMaxSketch;
 import org.dma.sketchml.sketch.sketch.frequency.MinMaxSketch;
 import org.dma.sketchml.sketch.sketch.quantile.HeapQuantileSketch;
@@ -23,10 +24,10 @@ public class App {
     private static Random random = new Random();
 
     public static void main(String[] args) throws Exception {
-        Constants.Parallel.setParallelism(4);
-        dense();
+//        Constants.Parallel.setParallelism(4);
+//        dense();
         sparse();
-        Constants.Parallel.shutdown();
+//        Constants.Parallel.shutdown();
     }
 
     private static void dense() throws Exception {
@@ -38,6 +39,7 @@ public class App {
                 values[i] = random.nextGaussian();
             }
         }
+        HashFactory.precompute(n);
         Quantizer.QuantizationType quantType = Quantizer.QuantizationType.QUANTILE;
         int binNum = Quantizer.DEFAULT_BIN_NUM;
         VectorCompressor compressor = new DenseVectorCompressor(quantType, binNum);
@@ -64,8 +66,10 @@ public class App {
     }
 
     private static void sparse() throws Exception {
-        int n = 100000;
-        double sparsity = 0.9;
+//        int n = 100000;
+//        int n = 58000000;
+        int n = 30000000;
+        double sparsity = 0.8;
         IntArrayList keyList = new IntArrayList();
         DoubleArrayList valueList = new DoubleArrayList();
         for (int i = 0; i < n; i++) {
@@ -77,6 +81,7 @@ public class App {
         int nnz = keyList.size();
         int[] keys = keyList.toIntArray();
         double[] values = valueList.toDoubleArray();
+        HashFactory.precompute(n);
         Quantizer.QuantizationType quantType = Quantizer.QuantizationType.QUANTILE;
         int binNum = Quantizer.DEFAULT_BIN_NUM;
         int groupNum = GroupedMinMaxSketch.DEFAULT_MINMAXSKETCH_GROUP_NUM;
@@ -85,8 +90,8 @@ public class App {
         VectorCompressor compressor = new SparseVectorCompressor(
                 quantType, binNum, groupNum, rowNum, colRatio);
         compressor = (VectorCompressor) Utils.testSerialization(compressor);
-        //compressor.compressSparse(keys, values);
-        compressor.parallelCompressSparse(keys, values);
+        compressor.compressSparse(keys, values);
+//        compressor.parallelCompressSparse(keys, values);
         Pair<int[], double[]> dResult = compressor.decompressSparse();
         int[] dKeys = dResult.getLeft();
         double[] dValues = dResult.getRight();

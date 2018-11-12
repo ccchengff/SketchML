@@ -7,7 +7,7 @@ public class BJHash extends Int2IntHash {
         super(size);
     }
 
-    public int hash(int key) {
+    protected int doHash(int key) {
         int code = key;
         code = (code + 0x7ed55d16) + (code << 12);
         code = (code ^ 0xc761c23c) ^ (code >> 19);
@@ -15,12 +15,18 @@ public class BJHash extends Int2IntHash {
         code = (code + 0xd3a2646c) ^ (code << 9);
         code = (code + 0xfd7046c5) + (code << 3);
         code = (code ^ 0xb55a4f09) ^ (code >> 16);
-        code %= size;
-        return code >= 0 ? code : code + size;
+        return code;
     }
 
     @Override
     public Int2IntHash clone() {
-        return new BJHash(size);
+        BJHash copy = new BJHash(size);
+        copy.buffer = this.buffer;
+        return copy;
+    }
+
+    @Override
+    public boolean equalsIgnoreSize(Int2IntHash other) {
+        return other instanceof BJHash;
     }
 }

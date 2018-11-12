@@ -5,6 +5,7 @@ import org.dma.sketchml.ml.algorithm.GeneralizedLinearModel.Model._
 import org.dma.sketchml.ml.common.Constants
 import org.dma.sketchml.ml.conf.MLConf
 import org.dma.sketchml.ml.objective.{Adam, L2SquareLoss}
+import org.dma.sketchml.sketch.hash.HashFactory
 import org.slf4j.{Logger, LoggerFactory}
 
 object LinearRegModel {
@@ -23,7 +24,9 @@ class LinearRegModel(_conf: MLConf) extends GeneralizedLinearModel(_conf) {
       weights = new DenseVector(new Array[Double](bcConf.value.featureNum))
       optimizer = Adam(bcConf.value)
       loss = new L2SquareLoss(bcConf.value.l2Reg)
+      HashFactory.precompute(bcConf.value.featureNum)
     })
+    HashFactory.precompute(bcConf.value.featureNum)
   }
 
   override def getName: String = LinearRegModel.getName

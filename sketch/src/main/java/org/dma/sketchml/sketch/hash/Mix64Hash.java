@@ -7,7 +7,7 @@ public class Mix64Hash extends Int2IntHash {
         super(size);
     }
 
-    public int hash(int key) {
+    protected int doHash(int key) {
         int code = key;
         code = (~code) + (code << 21); // code = (code << 21) - code - 1;
         code = code ^ (code >> 24);
@@ -16,12 +16,18 @@ public class Mix64Hash extends Int2IntHash {
         code = (code + (code << 2)) + (code << 4); // code * 21
         code = code ^ (code >> 28);
         code = code + (code << 31);
-        code %= size;
-        return code >= 0 ? code : code + size;
+        return code;
     }
 
     @Override
     public Int2IntHash clone() {
-        return new Mix64Hash(size);
+        Mix64Hash copy = new Mix64Hash(size);
+        copy.buffer = this.buffer;
+        return copy;
+    }
+
+    @Override
+    public boolean equalsIgnoreSize(Int2IntHash other) {
+        return other instanceof Mix64Hash;
     }
 }

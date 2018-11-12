@@ -4,6 +4,9 @@ import org.dma.sketchml.sketch.base.Int2IntHash;
 import org.dma.sketchml.sketch.base.SketchMLException;
 import org.dma.sketchml.sketch.util.Maths;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.*;
 
 public class HashFactory {
@@ -12,6 +15,11 @@ public class HashFactory {
             new TWHash(0), new BKDRHash(0, 31), new BKDRHash(0, 131),
             new BKDRHash(0, 267), new BKDRHash(0, 1313), new BKDRHash(0, 13131)};
     private static final Random random = new Random();
+
+    public static void precompute(int maxKey) {
+        for (Int2IntHash hash: int2intHashes)
+            hash.precompute(maxKey);
+    }
 
     public static Int2IntHash getRandomInt2IntHash(int size) {
         int idx = random.nextInt(int2intHashes.length);
@@ -35,5 +43,20 @@ public class HashFactory {
             }
             return res;
         }
+    }
+
+    public static void serialize(ObjectOutputStream oos, Int2IntHash hash)
+            throws IOException {
+        oos.writeObject(hash);
+    }
+
+    public static Int2IntHash deserialize(ObjectInputStream ois)
+            throws ClassNotFoundException, IOException {
+        Int2IntHash res = (Int2IntHash) ois.readObject();
+        for (Int2IntHash hash: int2intHashes) {
+            if (res.equalsIgnoreSize(hash))
+                res.setPrecomputeBuffer(hash.getPrecomputeBuffer());
+        }
+        return res;
     }
 }

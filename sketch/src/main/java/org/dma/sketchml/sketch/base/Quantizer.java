@@ -26,6 +26,7 @@ public abstract class Quantizer implements Serializable {
     protected double max;
 
     protected int[] bins;
+    protected int[] binCounts;
     public static final int DEFAULT_BIN_NUM = 256;
 
     public Quantizer(int binNum) {
@@ -87,8 +88,11 @@ public abstract class Quantizer implements Serializable {
     protected void quantizeToBins(double[] values) {
         int size = values.length;
         bins = new int[size];
-        for (int i = 0; i < size; i++)
+        binCounts = new int[binNum];
+        for (int i = 0; i < size; i++) {
             bins[i] = indexOf(values[i]);
+            binCounts[bins[i]]++;
+        }
     }
 
     protected void parallelQuantizeToBins(double[] values) throws InterruptedException, ExecutionException {
@@ -113,6 +117,10 @@ public abstract class Quantizer implements Serializable {
         }
         for (int i = 0; i < threadNum; i++) {
             futures[i].get();
+        }
+        binCounts = new int[binNum];
+        for (int i = 0; i < size; i++) {
+            binCounts[bins[i]]++;
         }
     }
 
@@ -167,6 +175,10 @@ public abstract class Quantizer implements Serializable {
 
     public int[] getBins() {
         return bins;
+    }
+
+    public int[] getBinCounts() {
+        return binCounts;
     }
 
     public int getZeroIdx() {

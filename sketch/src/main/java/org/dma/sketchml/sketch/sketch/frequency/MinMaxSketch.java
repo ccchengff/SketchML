@@ -90,7 +90,7 @@ public class MinMaxSketch implements Serializable {
         oos.writeInt(colNum);
         oos.writeInt(zeroValue);
         for (Int2IntHash hash : hashes)
-            oos.writeObject(hash);
+            HashFactory.serialize(oos, hash);
         BinaryEncoder huffman = new HuffmanEncoder();
         huffman.encode(table);
         oos.writeObject(huffman);
@@ -102,7 +102,7 @@ public class MinMaxSketch implements Serializable {
         zeroValue = ois.readInt();
         hashes = new Int2IntHash[rowNum];
         for (int i = 0; i < rowNum; i++)
-            hashes[i] = (Int2IntHash) ois.readObject();
+            hashes[i] = HashFactory.deserialize(ois);
         BinaryEncoder encoder = (BinaryEncoder) ois.readObject();
         table = encoder.decode();
     }

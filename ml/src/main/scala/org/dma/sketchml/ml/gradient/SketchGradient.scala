@@ -40,7 +40,7 @@ class SketchGradient(d: Int, binNum: Int, groupNum: Int, rowNum: Int, colRatio: 
     bucketValues = quantizer.getValues
     // 2. encode bins and keys
     sketch = new GroupedMinMaxSketch(groupNum, rowNum, colRatio, quantizer.getBinNum, quantizer.getZeroIdx)
-    sketch.create(sparse.indices, quantizer.getBins)
+    sketch.create(sparse.indices, quantizer)
     bins = null
     //sketch.parallelCreate(sparse.indices, quantizer.getBins)
     // 3. set nnz

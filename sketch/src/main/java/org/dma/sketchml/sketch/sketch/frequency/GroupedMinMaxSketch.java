@@ -4,6 +4,7 @@ import it.unimi.dsi.fastutil.ints.IntArrayList;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.dma.sketchml.sketch.base.BinaryEncoder;
+import org.dma.sketchml.sketch.base.Quantizer;
 import org.dma.sketchml.sketch.binary.DeltaAdaptiveEncoder;
 import org.dma.sketchml.sketch.common.Constants;
 import org.dma.sketchml.sketch.util.Sort;
@@ -66,6 +67,37 @@ public class GroupedMinMaxSketch implements Serializable {
             encoders[i] = group.getRight();
         }
         LOG.debug(String.format("Create grouped MinMaxSketch cost %d ms",
+                System.currentTimeMillis() - startTime));
+    }
+
+    public void create(int[] keys, Quantizer quantizer) {
+        long startTime = System.currentTimeMillis();
+        int[] bins = quantizer.getBins();
+        int[] binCounts = quantizer.getBinCounts();
+        int[] groupEdges = FSketchUtils.calGroupEdges(zeroValue, binNum, groupNum);
+        sketches = new MinMaxSketch[groupNum];
+        encoders = new BinaryEncoder[groupNum];
+        IntArrayList[] keyLists = new IntArrayList[groupNum];
+        for (int i = 0; i < groupNum; i++) {
+            int groupSize = 0;
+            for (int binId = (i > 0 ? groupEdges[i - 1] : 0); binId < groupEdges[i]; binId++)
+                groupSize += binCounts[binId];
+            int colNum = (int) Math.ceil(groupSize * colRatio);
+            sketches[i] = new MinMaxSketch(rowNum, colNum, zeroValue);
+            encoders[i] = new DeltaAdaptiveEncoder();
+            keyLists[i] = new IntArrayList(groupSize);
+        }
+        for (int i = 0; i < keys.length; i++) {
+            int groupIdx = 0;
+            while (groupEdges[groupIdx] <= bins[i]) groupIdx++;
+            sketches[groupIdx].insert(keys[i], bins[i]);
+            keyLists[groupIdx].add(keys[i]);
+        }
+        for (int i = 0; i < groupNum; i++) {
+            encoders[i].encode(keyLists[i].toIntArray(null));
+            keyLists[i].clear();
+        }
+        LOG.info(String.format("Create grouped MinMaxSketch cost %d ms",
                 System.currentTimeMillis() - startTime));
     }
 
